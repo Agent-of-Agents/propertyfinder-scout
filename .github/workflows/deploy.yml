@@ -35,13 +35,56 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Проверить, что агент развёрнут
+      # Первое развёртывание обычно делает deploy_push, но у фабрики нет доступа
+      # к серверу, поэтому .env создаётся здесь из секретов репозитория.
+      # Если файл уже есть — не трогаем, rsync его тоже исключает.
+      - name: Развернуть агента, если он ещё не развёрнут
+        env:
+          API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BOT_TOKEN: ${{ secrets.PROPERTYFINDER_SCOUT_BOT_TOKEN }}
+          BOT_TOKEN_FALLBACK: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ALLOWED_IDS: ${{ secrets.ALLOWED_USER_IDS }}
+          MONGO_URI: ${{ secrets.MONGODB_URI }}
         run: |
-          if ! $SSH "$TARGET" "test -f $REMOTE_DIR/.env"; then
-            echo "::error::Нет $REMOTE_DIR/.env — секреты агента на сервер ещё не клали."
-            echo "Первое развёртывание делает deploy_push: он создаёт каталог и пишет .env."
+          if $SSH "$TARGET" "test -f $REMOTE_DIR/.env"; then
+            echo "$REMOTE_DIR/.env уже на месте — оставляю как есть"
+            exit 0
+          fi
+
+          echo "Первое развёртывание: .env на сервере нет, создаю из секретов"
+
+          if [ -z "$BOT_TOKEN" ]; then
+            echo "Секрета PROPERTYFINDER_SCOUT_BOT_TOKEN нет, беру TELEGRAM_BOT_TOKEN"
+            BOT_TOKEN="$BOT_TOKEN_FALLBACK"
+          fi
+
+          missing=""
+          [ -z "$API_KEY" ] && missing="$missing ANTHROPIC_API_KEY"
+          [ -z "$BOT_TOKEN" ] && missing="$missing PROPERTYFINDER_SCOUT_BOT_TOKEN(или TELEGRAM_BOT_TOKEN)"
+          if [ -n "$missing" ]; then
+            echo "::error::Не хватает секретов:$missing — добавь их в настройках репозитория."
             exit 1
           fi
+          [ -z "$MONGO_URI" ] && echo "::warning::MONGODB_URI пуст — история диалогов не переживёт перезапуск."
+          [ -z "$ALLOWED_IDS" ] && echo "::warning::ALLOWED_USER_IDS пуст — бот никого не пустит."
+
+          umask 077
+          {
+            echo "ANTHROPIC_API_KEY=$API_KEY"
+            echo "AGENT_MODEL=anthropic:claude-opus-5"
+            echo "AGENT_MAX_MODEL_RETRIES=3"
+            echo "AGENT_MAX_TOOL_RETRIES=2"
+            echo "TELEGRAM_BOT_TOKEN=$BOT_TOKEN"
+            echo "ALLOWED_USER_IDS=$ALLOWED_IDS"
+            echo "MONGODB_URI=$MONGO_URI"
+            echo "MONGODB_DB=agent_propertyfinder_scout"
+            echo "AGENT_MEMORY_TTL_SECONDS="
+          } > env.local
+
+          $SSH "$TARGET" "mkdir -p $REMOTE_DIR"
+          $SSH "$TARGET" "cat > $REMOTE_DIR/.env && chmod 600 $REMOTE_DIR/.env" < env.local
+          rm -f env.local
+          echo ".env создан на сервере"
 
       - name: Доставить исходники
         if: inputs.mode != 'restart'

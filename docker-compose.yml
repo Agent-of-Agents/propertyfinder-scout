@@ -1,0 +1,11 @@
+services:
+  agent-propertyfinder-scout:
+    build: .
+    container_name: agent-propertyfinder-scout
+    env_file: .env
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
