@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "name": "propertyfinder-scout",
+  "description": "Агент-разведчик каталога недвижимости propertyfinder.ae: открывает страницы каталога и рассказывает, что на них видно.",
+  "version": "0.1.0",
+  "created_at": "2026-09-11T21:17:20+00:00",
+  "generator": "agent-builder-mcp",
+  "standard": {
+    "framework": "langchain",
+    "api": "create_agent",
+    "docs": "https://docs.langchain.com/oss/python/langchain/agents"
+  },
+  "model": {
+    "id": "anthropic:claude-opus-5",
+    "provider": "anthropic",
+    "name": "claude-opus-5",
+    "package": "langchain-anthropic"
+  },
+  "runtime": {
+    "python": "3.13",
+    "entrypoint": "agent:build_agent",
+    "cli": "main.py",
+    "venv": ".venv"
+  },
+  "secrets": [
+    "ANTHROPIC_API_KEY"
+  ],
+  "deploy": {
+    "status": "not_configured",
+    "target": null,
+    "policies": {
+      "network": "unrestricted",
+      "human_in_the_loop": [],
+      "max_cost_usd_per_run": null
+    }
+  }
+}

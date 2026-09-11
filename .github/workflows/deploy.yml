@@ -1,0 +1,68 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "deploy — доставить код и пересобрать образ; restart — только перезапустить контейнер"
+        type: choice
+        default: deploy
+        options: [deploy, restart]
+
+# Два деплоя одного агента одновременно кончились бы гонкой за каталог.
+concurrency:
+  group: deploy-propertyfinder-scout
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      REMOTE_DIR: /opt/agents/propertyfinder-scout
+      CONTAINER: agent-propertyfinder-scout
+      SSH: ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes
+      TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ключ доступа к серверу
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Проверить, что агент развёрнут
+        run: |
+          if ! $SSH "$TARGET" "test -f $REMOTE_DIR/.env"; then
+            echo "::error::Нет $REMOTE_DIR/.env — секреты агента на сервер ещё не клали."
+            echo "Первое развёртывание делает deploy_push: он создаёт каталог и пишет .env."
+            exit 1
+          fi
+
+      - name: Доставить исходники
+        if: inputs.mode != 'restart'
+        run: |
+          rsync -az --delete -e "$SSH"             --exclude '.git/' --exclude '.github/' --exclude '.venv/'             --exclude '__pycache__/' --exclude '.pytest_cache/'             --exclude 'tests/' --exclude '.env'             ./ "$TARGET:$REMOTE_DIR/"
+
+      - name: Собрать образ и поднять контейнер
+        if: inputs.mode != 'restart'
+        run: $SSH "$TARGET" "cd $REMOTE_DIR && docker compose up -d --build"
+
+      - name: Перезапустить контейнер
+        if: inputs.mode == 'restart'
+        run: $SSH "$TARGET" "cd $REMOTE_DIR && docker compose restart"
+
+      - name: Убедиться, что контейнер выжил
+        run: |
+          sleep 10
+          read -r state restarts <<< "$($SSH "$TARGET"             "docker inspect -f '{{.State.Status}} {{.RestartCount}}' $CONTAINER")"
+          echo "статус: $state, перезапусков: $restarts"
+          if [ "$state" != "running" ] || [ "$restarts" != "0" ]; then
+            echo "::error::Контейнер не выжил — деплой считается провалившимся."
+            $SSH "$TARGET" "docker logs --tail 50 $CONTAINER 2>&1" || true
+            exit 1
+          fi
