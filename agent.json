@@ -33,5 +33,12 @@
       "human_in_the_loop": [],
       "max_cost_usd_per_run": null
     }
+  },
+  "repository": {
+    "org": "Agent-of-Agents",
+    "name": "propertyfinder-scout",
+    "url": "https://github.com/Agent-of-Agents/propertyfinder-scout",
+    "branch": "main",
+    "published_at": "2026-09-11T21:21:18+00:00"
   }
 }
