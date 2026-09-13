@@ -26,19 +26,25 @@
     "ANTHROPIC_API_KEY"
   ],
   "deploy": {
-    "status": "not_configured",
-    "target": null,
+    "status": "deployed",
+    "target": {
+      "host": "10.114.0.2",
+      "directory": "/opt/agents/propertyfinder-scout",
+      "container": "agent-propertyfinder-scout"
+    },
     "policies": {
       "network": "unrestricted",
       "human_in_the_loop": [],
       "max_cost_usd_per_run": null
-    }
+    },
+    "deployed_at": "2026-09-13T20:22:15+00:00",
+    "memory_database": "agent_propertyfinder-scout"
   },
   "repository": {
     "org": "Agent-of-Agents",
     "name": "propertyfinder-scout",
     "url": "https://github.com/Agent-of-Agents/propertyfinder-scout",
     "branch": "main",
-    "published_at": "2026-09-11T21:34:16+00:00"
+    "published_at": "2026-09-11T21:37:17+00:00"
   }
 }
