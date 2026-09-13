@@ -1,0 +1,491 @@
+<title>Чертёж системы подбора</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600;7..72,700&family=Golos+Text:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0A0B; --surface:#121214; --surface-2:#1A1A1D; --sunk:#0E0E10;
+  --ink:#ECECEE; --ink-2:#9C9CA4; --ink-3:#6E6E77;
+  --rule:#232327; --rule-2:#323238;
+  --gold:#C9A55C; --gold-soft:#C9A55C14; --gold-line:#C9A55C4D;
+  --coral:#E0654A; --coral-soft:#E0654A12; --coral-line:#E0654A4D;
+  --blue:#6C9BD1; --blue-soft:#6C9BD112; --blue-line:#6C9BD140;
+  --green:#6FBF8A; --green-soft:#6FBF8A14; --green-line:#6FBF8A4D;
+}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); font-family:"Golos Text","Segoe UI",system-ui,sans-serif; font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:Literata,Georgia,serif; font-weight:600; line-height:1.2; margin:0}
+p{margin:0 0 .9em}
+a{color:var(--gold); text-underline-offset:3px; text-decoration-thickness:1px}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+code{color:var(--gold); background:var(--gold-soft); padding:1px 5px; border-radius:4px; font-size:.9em}
+.wrap{max-width:1000px; margin:0 auto; padding:0 24px}
+
+header{border-bottom:1px solid var(--rule); background:linear-gradient(180deg,#141416 0%,var(--bg) 100%)}
+.hd{padding:60px 0 44px}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); margin-bottom:20px}
+h1{font-size:clamp(33px,5.4vw,54px); letter-spacing:-.022em; margin-bottom:16px}
+.lede{font-size:18px; color:var(--ink-2); max-width:64ch}
+.meta{display:flex; flex-wrap:wrap; gap:9px 24px; margin-top:28px; font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-3)}
+.meta b{color:var(--gold); font-weight:500}
+
+nav{position:sticky; top:0; z-index:20; background:#0A0A0BE8; backdrop-filter:blur(12px); border-bottom:1px solid var(--rule)}
+.navin{display:flex; gap:2px; overflow-x:auto; padding:9px 0}
+nav a{flex:0 0 auto; font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-3); text-decoration:none; padding:5px 10px; border-radius:5px; white-space:nowrap}
+nav a:hover{color:var(--gold); background:var(--surface-2)}
+
+section{padding:58px 0; border-bottom:1px solid var(--rule)}
+section:last-of-type{border-bottom:none}
+.sechead{display:flex; gap:16px; align-items:baseline; margin-bottom:28px}
+.num{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--gold); padding-top:9px; flex:0 0 auto}
+h2{font-size:clamp(24px,3.3vw,32px); letter-spacing:-.018em}
+.sub{color:var(--ink-2); max-width:70ch; margin-top:7px; font-size:15.5px}
+h3{font-size:18px; margin:34px 0 12px; letter-spacing:-.008em}
+h3:first-child{margin-top:0}
+
+.card{background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:20px 22px}
+.grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px}
+.grid3{display:grid; grid-template-columns:repeat(auto-fit,minmax(235px,1fr)); gap:14px}
+
+.tablewrap{overflow-x:auto; border:1px solid var(--rule); border-radius:10px; background:var(--surface)}
+table{width:100%; border-collapse:collapse; font-size:14.5px}
+th{text-align:left; font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); padding:12px 14px; border-bottom:1px solid var(--rule-2); white-space:nowrap}
+td{padding:11px 14px; border-bottom:1px solid var(--rule); vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.mono{font-size:13px; color:var(--ink-2)}
+.rowhead td{background:var(--sunk); font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--gold); padding:9px 14px}
+
+.tag{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; padding:2.5px 7px; border-radius:4px; white-space:nowrap; border:1px solid}
+.t-ok{color:var(--gold); background:var(--gold-soft); border-color:var(--gold-line)}
+.t-done{color:var(--green); background:var(--green-soft); border-color:var(--green-line)}
+.t-warn{color:var(--blue); background:var(--blue-soft); border-color:var(--blue-line)}
+.t-hard{color:var(--coral); background:var(--coral-soft); border-color:var(--coral-line)}
+
+.key{border:1px solid var(--gold-line); background:var(--gold-soft); border-radius:10px; padding:20px 22px; margin:24px 0; position:relative}
+.key::before{content:attr(data-label); position:absolute; top:-8px; left:18px; background:var(--bg); padding:0 9px; font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold)}
+.key p:last-child{margin-bottom:0}
+.key.crit{border-color:var(--coral-line); background:var(--coral-soft)} .key.crit::before{color:var(--coral)}
+.key.done{border-color:var(--green-line); background:var(--green-soft)} .key.done::before{color:var(--green)}
+.key b{color:var(--ink)}
+
+ul.clean{list-style:none; padding:0; margin:0}
+ul.clean li{padding:8px 0 8px 22px; position:relative; border-bottom:1px solid var(--rule); font-size:15px; color:var(--ink-2)}
+ul.clean li:last-child{border-bottom:none}
+ul.clean li::before{content:"—"; position:absolute; left:0; color:var(--ink-3); font-family:"IBM Plex Mono",monospace}
+ul.clean li b{color:var(--ink)}
+
+.own{display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--rule); border-radius:10px; overflow:hidden}
+.own > div{padding:18px 20px}
+.own > div:first-child{border-right:1px solid var(--rule); background:var(--gold-soft)}
+.own > div:last-child{background:var(--blue-soft)}
+.ownhd{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.09em; text-transform:uppercase; margin-bottom:13px}
+.own > div:first-child .ownhd{color:var(--gold)} .own > div:last-child .ownhd{color:var(--blue)}
+.own ul{list-style:none; padding:0; margin:0; font-size:14.5px} .own li{padding:4px 0; color:var(--ink-2)}
+.own li code{font-size:.85em}
+@media(max-width:640px){ .own{grid-template-columns:1fr} .own>div:first-child{border-right:none; border-bottom:1px solid var(--rule)} }
+
+.step{display:grid; grid-template-columns:auto 1fr; gap:18px; padding:16px 0; border-bottom:1px solid var(--rule)}
+.step:last-child{border-bottom:none}
+.dot{width:26px; height:26px; border-radius:50%; border:1px solid var(--gold-line); background:var(--gold-soft); color:var(--gold); font-family:"IBM Plex Mono",monospace; font-size:12px; display:flex; align-items:center; justify-content:center; margin-top:1px}
+.dot.you{border-color:var(--blue-line); background:var(--blue-soft); color:var(--blue)}
+.step b{display:block; margin-bottom:3px; font-family:Literata,serif; font-size:16px}
+.step span{color:var(--ink-2); font-size:14.5px}
+
+/* белые слайды на тёмном фоне */
+.slides{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:16px}
+.sl{aspect-ratio:16/9; background:#FFFFFF; border-radius:4px; padding:9px; display:flex; flex-direction:column; overflow:hidden; position:relative; color:#171717}
+.sl .lbl{position:absolute; top:-18px; left:0; font-family:"IBM Plex Mono",monospace; font-size:9.5px; color:var(--ink-3); letter-spacing:.06em}
+.slwrap{position:relative; padding-top:18px}
+.ph{background:#E9E6E0; border-radius:2px; flex:1}
+.sl .band{display:flex; justify-content:space-between; align-items:flex-end; padding-top:6px}
+.sl .name{font-family:"Montserrat","Golos Text",sans-serif; font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; font-weight:300}
+.sl .price{font-size:8.5px; letter-spacing:.06em; font-weight:300}
+.sl .cop{width:12px; height:1.2px; background:#A35E41; margin-bottom:3px}
+.sl .split{display:grid; grid-template-columns:47% 1fr; gap:6px; flex:1}
+.sl .facts{font-size:5.5px; line-height:1.7; color:#444; padding-top:3px}
+.sl .facts b{display:block; font-size:6.5px; color:#171717; letter-spacing:.06em; margin-bottom:3px; font-weight:400}
+.sl .facts i{display:block; border-bottom:.5px solid #DFDDD9; font-style:normal}
+.sl .g3{display:grid; grid-template-columns:62% 1fr; grid-template-rows:1fr 1fr; gap:4px; flex:1}
+.sl .g3 .ph:first-child{grid-row:1/3}
+.sl .g4{display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:4px; flex:1}
+.sl .plan{flex:1; display:flex; align-items:center; justify-content:center}
+.sl .plan div{width:48%; height:78%; border:1px solid #444; border-radius:1px; background:repeating-linear-gradient(90deg,#fff 0 6px,#f0eee9 6px 7px)}
+.sl .notes{background:#F6F5F2; margin:-9px; padding:9px; flex:1; display:grid; grid-template-columns:1fr 38%; gap:8px}
+.sl .notes p{font-size:5px; line-height:1.6; color:#444; margin:0}
+.sl .notes .box{border:.6px solid #DFDDD9; padding:6px; font-size:7px; letter-spacing:.05em}
+
+.agents{display:grid; grid-template-columns:repeat(auto-fit,minmax(285px,1fr)); gap:14px}
+.agent{background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:16px 18px}
+.agent-hd{display:flex; align-items:center; gap:9px; margin-bottom:9px; flex-wrap:wrap}
+.agent-name{font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:500; color:var(--gold)}
+.agent p{font-size:14px; color:var(--ink-2); margin:0}
+.zone{font-family:"IBM Plex Mono",monospace; font-size:9.5px; padding:2px 6px; border-radius:4px; border:1px solid var(--rule-2); color:var(--ink-3); white-space:nowrap}
+
+.phase{display:grid; grid-template-columns:110px 1fr; gap:20px; padding:16px 0; border-bottom:1px solid var(--rule); align-items:start}
+.phase:last-child{border-bottom:none}
+.phase-n{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--gold); padding-top:3px}
+.phase-n.done{color:var(--green)}
+.phase b{font-family:Literata,serif; font-size:16.5px; display:block; margin-bottom:4px}
+.phase span{color:var(--ink-2); font-size:14.5px}
+@media(max-width:560px){ .phase{grid-template-columns:1fr; gap:4px} }
+
+.stat{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px}
+.stat div{background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:16px 18px}
+.stat b{display:block; font-family:Literata,serif; font-size:28px; color:var(--gold); font-weight:600; line-height:1}
+.stat span{font-size:13px; color:var(--ink-2); display:block; margin-top:6px}
+
+.check{padding:0; margin:0; list-style:none}
+.check li{padding:13px 0 13px 34px; position:relative; border-bottom:1px solid var(--rule); font-size:15px}
+.check li:last-child{border-bottom:none}
+.check li::before{content:""; position:absolute; left:0; top:16px; width:15px; height:15px; border:1.5px solid var(--rule-2); border-radius:3.5px; background:var(--surface)}
+.check li.done::before{content:"✓"; color:var(--green); border-color:var(--green-line); background:var(--green-soft); font-size:10px; display:flex; align-items:center; justify-content:center; line-height:1}
+.check li b{display:block; font-family:Literata,serif; font-size:15.5px; margin-bottom:2px}
+.check li.done b{color:var(--ink-3); text-decoration:line-through}
+.check li span{color:var(--ink-2); font-size:14px}
+
+footer{padding:44px 0 64px; color:var(--ink-3); font-size:13px; font-family:"IBM Plex Mono",monospace}
+</style>
+
+<header>
+  <div class="wrap hd">
+    <div class="eyebrow">Алексей Широков · Дубай / Москва · ред. 10.09.2026 · после первого клиента</div>
+    <h1>Чертёж системы подбора</h1>
+    <p class="lede">Это уже не план, а описание того, что построено и проверено на живом клиенте. Этапы 0–3 закрыты: от брифа до PDF на Диске одной галочкой. Дальше — автономность.</p>
+    <div class="meta">
+      <span><b>3</b> этапа закрыто</span>
+      <span><b>1</b> клиент прогнан</span>
+      <span><b>91</b> объявление собрано</span>
+      <span><b>2</b> презентации выпущено</span>
+      <span><b>6</b> уроков зафиксировано</span>
+    </div>
+  </div>
+</header>
+
+<nav><div class="wrap navin">
+  <a href="#s1">01 · Статус</a>
+  <a href="#s2">02 · Цикл</a>
+  <a href="#s3">03 · Источники</a>
+  <a href="#s4">04 · Таблица</a>
+  <a href="#s5">05 · Презентация</a>
+  <a href="#s6">06 · Фото</a>
+  <a href="#s7">07 · WhatsApp</a>
+  <a href="#s8">08 · Google</a>
+  <a href="#s9">09 · Иванова</a>
+  <a href="#s10">10 · Уроки</a>
+  <a href="#s11">11 · Дальше</a>
+  <a href="#s12">12 · От тебя</a>
+</div></nav>
+
+<div class="wrap">
+
+<section id="s1">
+  <div class="sechead"><div class="num">01</div><div>
+    <h2>Что построено</h2>
+    <p class="sub">Каждый пункт проверен на реальных данных, а не на демо.</p>
+  </div></div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Блок</th><th>Состояние</th><th>Что именно</th></tr></thead>
+    <tbody>
+      <tr><td><b>Google</b></td><td><span class="tag t-done">Работает</span></td><td>Сервисный аккаунт, Общий диск «Презентации проектов», таблицы в «Мой диск». Чекбоксы, закреплённая шапка, запись в ячейки.</td></tr>
+      <tr><td><b>Сбор Дубай</b></td><td><span class="tag t-done">Работает</span></td><td>Property Finder без браузера, по странице башни. Языки агента, телефон агентства, площадь, цена, фото — всё из данных страницы.</td></tr>
+      <tr><td><b>Дистресс</b></td><td><span class="tag t-done">Работает</span></td><td>Три источника проверены, лист «Дистресс» в книге клиента, совпадение с брифом нашлось на первом же клиенте.</td></tr>
+      <tr><td><b>Таблица</b></td><td><span class="tag t-done">Работает</span></td><td>Совместная. Твои колонки защищены отказом на запись. Колонки ищутся по названию — вставка новых ничего не ломает.</td></tr>
+      <tr><td><b>Презентация</b></td><td><span class="tag t-done">Утверждена</span></td><td>Белая вёрстка 16:9, все фото объявления, планировка отдельным листом. Галочка + цена → PDF на Диске → ссылка в строке.</td></tr>
+      <tr><td><b>WhatsApp</b></td><td><span class="tag t-done">Работает</span></td><td>Полуавтомат: галочки → страница с кнопками на телефоне → один тап на брокера. Второй чат.</td></tr>
+      <tr><td><b>Bayut</b></td><td><span class="tag t-warn">Не начат</span></td><td>Даст +20–30% охвата по Дубаю.</td></tr>
+      <tr><td><b>Москва</b></td><td><span class="tag t-warn">Не начат</span></td><td>Циан + Яндекс через твой Chrome.</td></tr>
+      <tr><td><b>Ежедневный прогон</b></td><td><span class="tag t-warn">Не начат</span></td><td>Перепроверка, новые объекты, снятые, смена цен.</td></tr>
+      <tr><td><b>Сервер + Telegram</b></td><td><span class="tag t-warn">Не начат</span></td><td>Этап 4. Автономная работа без твоей команды.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s2">
+  <div class="sechead"><div class="num">02</div><div>
+    <h2>Цикл, как он работает сегодня</h2>
+    <p class="sub">Синие шаги — твои. Золотые — системы. Сейчас каждый золотой шаг запускается командой; в этапе 4 — сам.</p>
+  </div></div>
+
+  <div>
+    <div class="step"><div class="dot you">1</div><div><b>Бриф</b><span>Голосом или текстом: ФИО, регион, проект или локации, тип, бюджет, пожелания. Заводится папка клиента и <code>brief.md</code>.</span></div></div>
+    <div class="step"><div class="dot">2</div><div><b>Сбор</b><span>Property Finder по странице башни или района. Нормализация, балл русскоязычности, медиана AED/м² по типу, отклонение от неё, вид на воду из заголовка.</span></div></div>
+    <div class="step"><div class="dot">3</div><div><b>Таблица</b><span>Создаётся от твоего имени в «Подборках». Листы «Объекты», «Топ-7», «Дистресс». Сортировка: русскоязычные сверху, дальше по цене за метр.</span></div></div>
+    <div class="step"><div class="dot you">4</div><div><b>Запрос брокеру</b><span>Галочка «📩 Запросить» → страница с кнопками на телефоне → один тап открывает WhatsApp с готовым текстом Property Finder. Дата ложится в «Запрошено».</span></div></div>
+    <div class="step"><div class="dot you">5</div><div><b>Одобрение и цена</b><span>Галочка «✅ Одобрено» и цена в «Моя цена» — та, что после торга. Без цены сборка не запустится, из объявления цена не подставляется никогда.</span></div></div>
+    <div class="step"><div class="dot">6</div><div><b>Презентация</b><span>Все фото объявления, планировка если есть, комментарий, цена в AED и USD. Файл ложится в папку клиента на Общем диске, ссылка — в колонку «Презентация».</span></div></div>
+    <div class="step"><div class="dot you">7</div><div><b>Клиенту</b><span>Ссылка из таблицы или файл. Ни контактов, ни следов площадки — клиент видит только объект.</span></div></div>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sechead"><div class="num">03</div><div>
+    <h2>Источники: что проверено</h2>
+  </div></div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Источник</th><th>Как берём</th><th>Статус</th></tr></thead>
+    <tbody>
+      <tr><td><b>Property Finder</b></td><td>Без браузера: данные лежат в самой странице. Заходить <b>через страницу башни или района</b> — поиск по тексту игнорируется и отдаёт все 120 тысяч объявлений Дубая. <code>agent.languages</code> отдаёт языки агента напрямую.</td><td><span class="tag t-done">В работе</span></td></tr>
+      <tr><td><b>Bayut</b></td><td>Поисковый бэкенд, отдаёт пачками.</td><td><span class="tag t-warn">Следующий</span></td></tr>
+      <tr><td><b>Циан / Яндекс</b></td><td>Через твой Chrome, капчи — твой клик.</td><td><span class="tag t-warn">Москва</span></td></tr>
+      <tr class="rowhead"><td colspan="3">Дистресс — список закрыт, три источника</td></tr>
+      <tr><td><b>distressonly.deals</b></td><td>Готовый HTML, внутри уже разобраны <code>OP+DLD</code>, <code>SELLING PRICE</code>, <code>Discount %</code>.</td><td><span class="tag t-done">Проверен</span></td></tr>
+      <tr><td><b>Google-таблица офф-плана</b></td><td>558 строк, метки <code>NEW</code> / <code>NEW PRICE</code>.</td><td><span class="tag t-done">Проверен</span></td></tr>
+      <tr><td><b>t.me/distress_deal</b></td><td>Публичный канал, читается через веб-зеркало <code>t.me/s/…</code> без бота.</td><td><span class="tag t-done">Проверен</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="key" data-label="Что ещё нашлось на странице объявления">
+    <p>Property Finder отдаёт <code>similar_price_transactions</code> — <b>реальные сделки DLD по той же площади</b> с датами и суммами. Это точнее, чем медиана по объявлениям: там цены, за которые реально купили, а не за которые просят. Пока не подключено, стоит первым в очереди на дневной прогон.</p>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sechead"><div class="num">04</div><div>
+    <h2>Таблица клиента</h2>
+    <p class="sub">Лист «Объекты» — как он выглядит сейчас, включая колонки из второго чата.</p>
+  </div></div>
+
+  <div class="own">
+    <div>
+      <div class="ownhd">Пишет система</div>
+      <ul>
+        <li><code>A</code> listing_id — скрытый якорь строки</li>
+        <li><code>D</code> Запрошено — дата отправки запроса</li>
+        <li><code>E–F</code> Приоритет · 🇷🇺</li>
+        <li><code>G–J</code> Брокер · Агентство · Телефон · Языки</li>
+        <li><code>K–N</code> Тип · Площадь м² · Цена AED · AED/м²</li>
+        <li><code>O–Q</code> К рынку · Вид на воду · Цена/качество</li>
+        <li><code>R–T</code> Фото · Ссылка · Комментарий системы</li>
+        <li><code>X</code> Презентация — ссылка на PDF</li>
+      </ul>
+    </div>
+    <div>
+      <div class="ownhd">Пишешь ты — отказ на запись</div>
+      <ul>
+        <li><code>B</code> ✅ Одобрено</li>
+        <li><code>C</code> 📩 Запросить</li>
+        <li><code>U</code> Статус</li>
+        <li><code>V</code> Моя цена</li>
+        <li><code>W</code> Мой комментарий</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="key crit" data-label="Защита, появившаяся после ошибки">
+    <p>Скрипт <b>ищет колонки по названию в шапке</b>, а не по номеру, и <b>перед каждой записью сверяет заголовок целевой ячейки</b>. Если он не совпал или это одна из твоих колонок — остановка с ошибкой, не запись. Причина в разделе 10.</p>
+  </div>
+
+  <h3>Листы книги</h3>
+  <div class="grid3">
+    <div class="card"><b class="mono" style="color:var(--gold)">Объекты</b><p style="font-size:14px;color:var(--ink-2);margin:6px 0 0">Всё найденное. Русскоязычные сверху, дальше по цене за метр.</p></div>
+    <div class="card"><b class="mono" style="color:var(--gold)">Топ-7</b><p style="font-size:14px;color:var(--ink-2);margin:6px 0 0">Шорт-лист с обоснованием на каждую строку.</p></div>
+    <div class="card"><b class="mono" style="color:var(--gold)">Дистресс</b><p style="font-size:14px;color:var(--ink-2);margin:6px 0 0">Ниже рынка по её проекту и соседним, с дисконтом и источником.</p></div>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sechead"><div class="num">05</div><div>
+    <h2>Презентация — утверждённый стандарт</h2>
+    <p class="sub">Белая вёрстка 16:9. Открывается на телефоне во весь экран. Это третья версия, две предыдущие отменены.</p>
+  </div></div>
+
+  <div class="slides">
+    <div class="slwrap"><div class="sl"><span class="lbl">ОБЛОЖКА</span>
+      <div class="ph" style="flex:2.2"></div>
+      <div class="band"><div><div class="cop"></div><div class="name">Marina Shores</div></div><div class="price">4 000 000 AED</div></div>
+    </div></div>
+    <div class="slwrap"><div class="sl"><span class="lbl">ОПИСАНИЕ</span>
+      <div class="split">
+        <div class="facts"><b>2 BEDROOM APARTMENT</b><i>Size · 1,131 sqft · 105.1 sqm</i><i>Bathrooms · 2</i><i>View · Full Marina</i><i>Handover · Q4 2026</i><br><b>4 000 000 AED</b></div>
+        <div class="ph"></div>
+      </div>
+    </div></div>
+    <div class="slwrap"><div class="sl"><span class="lbl">ГАЛЕРЕЯ · крупное + два</span><div class="g3"><div class="ph"></div><div class="ph"></div><div class="ph"></div></div></div></div>
+    <div class="slwrap"><div class="sl"><span class="lbl">ГАЛЕРЕЯ · четвёрка</span><div class="g4"><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div></div></div></div>
+    <div class="slwrap"><div class="sl"><span class="lbl">ПЛАНИРОВКА · одна на листе</span><div class="plan"><div></div></div></div></div>
+    <div class="slwrap"><div class="sl"><span class="lbl">ЗАКЛЮЧЕНИЕ</span>
+      <div class="notes"><div><p><b style="letter-spacing:.1em;font-weight:400">NOTES</b><br><br>A 2-bedroom residence of 105.1 sqm. Marina Shores is a waterfront tower by Emaar, handover Q4 2026. Payment in cash; available for immediate reservation.</p></div><div class="box">ASKING PRICE<br><span style="font-size:9px">4 000 000 AED</span><br>≈ 1 089 176 USD<br>38 059 AED / sqm</div></div>
+    </div></div>
+  </div>
+
+  <div class="grid2" style="margin-top:30px">
+    <div class="card">
+      <h3>Правила, названные тобой</h3>
+      <ul class="clean" style="font-size:14.5px">
+        <li><b>Все фото из объявления</b> — галерея сама добирает листы</li>
+        <li><b>Сетки миксовать</b> — крупное+два, четвёрка, тройка, не монотонно</li>
+        <li><b>Планировка всегда одна на листе</b>, с рендерами не смешивается</li>
+        <li>Ни контактов, ни логотипа, ни следов площадки</li>
+        <li>Весь текст английский</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Правила, которые добавил я</h3>
+      <ul class="clean" style="font-size:14.5px">
+        <li>Цена только твоя, рядом USD по 3.6725</li>
+        <li>Цену <b>ниже</b> рынка называем прямо — аргумент. <b>Выше</b> — не комментируем вовсе</li>
+        <li>Вид и этаж — из заголовка объявления, описание только запасной источник</li>
+        <li>Имя файла: <code>marina_shores_2br_105sqm.pdf</code></li>
+        <li>Пересборка обновляет файл на месте — ссылка клиенту не протухает</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="s6">
+  <div class="sechead"><div class="num">06</div><div>
+    <h2>Фото и планировки</h2>
+  </div></div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>#</th><th>Источник фото</th><th>Когда</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">1</td><td><b><code>photos_custom/</code></b> — если положил свои</td><td>Ручной override, всегда главный</td></tr>
+      <tr><td class="mono">2</td><td><b>Фото из объявления</b> — все до единого</td><td>Основной путь. У каждого лота свои кадры: и рендеры, и реальные съёмки</td></tr>
+      <tr><td class="mono">3</td><td><b>Рендеры проекта</b> из <code>assets/projects/</code></td><td>Только дополнить, если в объявлении меньше 8 кадров</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="grid2" style="margin-top:20px">
+    <div class="card">
+      <h3>Планировка</h3>
+      <p style="font-size:14.5px;color:var(--ink-2);margin:0">Берётся, если размечена: поле <code>floor_plans</code> объявления или метка на фото. Из общего пула исключается по содержимому, а не по имени. Визуальная догадка идёт мне на проверку глазами — в презентацию без подтверждения не попадает: детектор однажды принял ванную за чертёж.</p>
+    </div>
+    <div class="card">
+      <h3>Водяные знаки</h3>
+      <p style="font-size:14.5px;color:var(--ink-2);margin:0">Остаются как есть. Приглушить пробовал — не вышло: кадров в объявлении мало и все разные, метод даёт разводы по всему фото. Разбор оставлен в <code>lib/watermark.py</code>, чтобы не пробовать заново. Для офф-плана знаков нет — там рендеры.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s7">
+  <div class="sechead"><div class="num">07</div><div>
+    <h2>WhatsApp — полуавтомат</h2>
+    <p class="sub">Из второго чата. Ограничения площадки и мессенджера определили конструкцию.</p>
+  </div></div>
+
+  <div class="key crit" data-label="Два ограничения, которые нельзя обойти">
+    <p><b>Property Finder не отдаёт личный номер агента.</b> Кнопка WhatsApp ведёт на общий шлюз PF — один номер <code>+971 4 556 0345</code> у всех, а в конце предзаполненного текста стоит: <i>«Any changes made to this message will result in the enquiry not being sent to the agent»</i>. Текст менять нельзя, иначе запрос не дойдёт.</p>
+    <p style="margin-top:10px"><b>У приложения WhatsApp Business нет API.</b> Программная отправка — только через Cloud API, а перевод номера туда отключает приложение. Значит отправляет человек.</p>
+  </div>
+
+  <div>
+    <div class="step"><div class="dot you">1</div><div><b>Галочки в «📩 Запросить»</b><span>Отмечаешь объекты, по которым хочешь связаться.</span></div></div>
+    <div class="step"><div class="dot">2</div><div><b>Свежие ссылки</b><span>Скрипт тянет страницу каждого объявления заново — в тексте цена и reference, они меняются — и собирает одну страницу с кнопками.</span></div></div>
+    <div class="step"><div class="dot you">3</div><div><b>Один тап на объект</b><span>Открываешь страницу на телефоне, идёшь кнопками сверху вниз. Каждая открывает WhatsApp с готовым текстом — остаётся нажать «отправить».</span></div></div>
+    <div class="step"><div class="dot">4</div><div><b>Отметка</b><span>Дата в «Запрошено», галочка снимается. Свои вопросы — уже в ответной переписке, когда брокер напишет.</span></div></div>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sechead"><div class="num">08</div><div>
+    <h2>Google — как устроено</h2>
+  </div></div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Сервисный аккаунт</h3>
+      <p style="font-size:14px;color:var(--ink-2);margin:0"><code>claude-sheets@podbor-obyektov.iam.gserviceaccount.com</code><br><br>Ключ в <code>secrets/</code>, закрыт <code>.gitignore</code>. Бесплатно, без биллинга. Работает без браузера и без тебя.</p>
+    </div>
+    <div class="card">
+      <h3>Два места на Диске</h3>
+      <p style="font-size:14px;color:var(--ink-2);margin:0"><b>«Подборки»</b> в Мой диск — таблицы клиентов, создаются от твоего имени.<br><br><b>«Презентации проектов»</b> — Общий диск, папка на клиента, внутри <code>1BR/</code>, <code>2BR/</code>. Сюда ложатся PDF.</p>
+    </div>
+  </div>
+
+  <div class="key" data-label="Почему понадобился Общий диск">
+    <p>Google списывает объём файла с <b>владельца</b>, а не с папки. У сервисного аккаунта хранилища нет — ноль байт. Папку создать может (весит ноль), таблицу или PDF — нет: <code>403 storageQuotaExceeded</code>. На Общем диске файлы принадлежат диску, квота организации — загрузка проходит. Роль «Менеджер контента» не даёт безвозвратного удаления, только в корзину — это защита, повышать не нужно.</p>
+  </div>
+</section>
+
+<section id="s9">
+  <div class="sechead"><div class="num">09</div><div>
+    <h2>Живой прогон: Иванова Мария</h2>
+    <p class="sub">Marina Shores by Emaar, 1–2BR, 3–4,5 млн AED, наличные, сделка в октябре. Вид на воду, цена/качество.</p>
+  </div></div>
+
+  <div class="stat">
+    <div><b>91</b><span>объявлений по башне</span></div>
+    <div><b>45</b><span>у русскоязычных брокеров — по профилю, не по имени</span></div>
+    <div><b>28</b><span>двушек в бюджет</span></div>
+    <div><b>−22%</b><span>лучшая цена к медиане</span></div>
+    <div><b>1</b><span>дистресс прямо по её брифу</span></div>
+    <div><b>2</b><span>презентации на Диске</span></div>
+  </div>
+
+  <div class="key done" data-label="Что система сказала брокеру, а он не знал">
+    <p><b>В бюджет 3–4,5 млн однушки в Marina Shores не попадают вообще.</b> Все 1BR в башне — 1,75–2,8 млн. Бюджет целиком укрывает двушки. Это меняет разговор с клиентом: либо 2BR ровно в бюджет, либо 1BR со свободными 200–1200 тысячами.</p>
+  </div>
+
+  <div class="key" data-label="И что она сказала про объект №1">
+    <p>Самый дешёвый лот я поставил первым по цене. За полдня продавец переписал объявление: было «Marina View | OP Price», стало <b>«Bridge View | Low Floor»</b>. Низкий этаж, вид на мост — под её пожелание слабый. Система это поймала при сборке презентации и не написала клиенту «Panoramic View» из общего текста по проекту.</p>
+  </div>
+</section>
+
+<section id="s10">
+  <div class="sechead"><div class="num">10</div><div>
+    <h2>Что сломалось и что из этого вышло</h2>
+    <p class="sub">Каждая ошибка — теперь правило в коде или в памяти.</p>
+  </div></div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Что случилось</th><th>Что теперь</th></tr></thead>
+    <tbody>
+      <tr><td><b>Затёр твои цены.</b> В таблицу вставили две колонки, всё сдвинулось, моя запись по жёсткому номеру столбца легла в «Моя цена». Следующая сборка сделала презентацию за 1 740 AED.</td><td>Колонки по названию. Отказ на запись, если заголовок не тот или это твоя колонка.</td></tr>
+      <tr><td><b>Обе презентации на одних фото.</b> Я поставил рендеры проекта выше фото из объявления.</td><td>Фото из объявления — основной источник. Рендеры только дополняют.</td></tr>
+      <tr><td><b>Планировка среди рендеров.</b> Исключал из галереи по имени файла, копия под другим именем прошла.</td><td>Исключение по хешу содержимого плюс визуальный признак.</td></tr>
+      <tr><td><b>Детектор планировок принял ванную за чертёж.</b></td><td>Догадки — мне на проверку глазами, в презентацию только размеченное.</td></tr>
+      <tr><td><b>Дубли на Диске.</b> Каждая пересборка заливала новый файл, ссылка в таблице протухала.</td><td>Файл обновляется на месте, ссылка постоянная.</td></tr>
+      <tr><td><b>«Priced above the tower average»</b> в комментарии клиенту.</td><td>Выше рынка не комментируем. Ниже — аргумент.</td></tr>
+      <tr><td><b>Объявления меняются за часы.</b> Заголовок, агент, цена.</td><td>Аргумент за ежедневную перепроверку. Этап 4.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s11">
+  <div class="sechead"><div class="num">11</div><div>
+    <h2>Дальше</h2>
+  </div></div>
+
+  <div>
+    <div class="phase"><div class="phase-n done">ГОТОВО</div><div><b>Этапы 0–3</b><span>Разведка, Google, таблица, сбор PF, дистресс, презентация, WhatsApp-полуавтомат. Всё проверено на Ивановой.</span></div></div>
+    <div class="phase"><div class="phase-n">СЛЕДУЮЩИЙ</div><div><b>Полнота по Дубаю</b><span>Bayut как второй источник, склейка дублей между площадками, сделки DLD из <code>similar_price_transactions</code> вместо медианы по объявлениям.</span></div></div>
+    <div class="phase"><div class="phase-n">ЭТАП 4</div><div><b>Автономность</b><span>VPS, ежедневный прогон: новые объекты, снятые, смена цен, дистрессы под активные брифы. Telegram-бот: бриф голосом, дайджест утром, одобрение кнопкой, PDF в чат. Капча — уведомление тебе.</span></div></div>
+    <div class="phase"><div class="phase-n">ЭТАП 5</div><div><b>Москва</b><span>Циан + Яндекс через твой Chrome. Собственники сверху. Реальные фото со знаками — как есть.</span></div></div>
+  </div>
+
+  <h3>Агенты этапа 4</h3>
+  <div class="agents">
+    <div class="agent"><div class="agent-hd"><span class="agent-name">intake</span><span class="zone">☁️ VPS</span></div><p>Бриф из Telegram → <code>brief.md</code>, папки на Диске, таблица.</p></div>
+    <div class="agent"><div class="agent-hd"><span class="agent-name">scout-dubai</span><span class="zone">☁️ VPS</span></div><p>PF + Bayut. Уже есть, нужно поставить на расписание.</p></div>
+    <div class="agent"><div class="agent-hd"><span class="agent-name">scout-moscow</span><span class="zone">💻 ПК</span></div><p>Циан + Яндекс через браузер.</p></div>
+    <div class="agent"><div class="agent-hd"><span class="agent-name">distress-watch</span><span class="zone">☁️ VPS</span></div><p>Три источника ежедневно, совпадения с брифами — сразу в Telegram.</p></div>
+    <div class="agent"><div class="agent-hd"><span class="agent-name">sheet-sync</span><span class="zone">☁️ VPS</span></div><p>Дельта в обе стороны: твои галочки → действия, рынок → таблица. Единственный, кто пишет.</p></div>
+    <div class="agent"><div class="agent-hd"><span class="agent-name">pdf-build</span><span class="zone">☁️ VPS</span></div><p>Уже есть. По галочке, без команды.</p></div>
+    <div class="agent"><div class="agent-hd"><span class="agent-name">outreach</span><span class="zone">💻 ты</span></div><p>Уже есть. Страница с кнопками — отправляешь ты.</p></div>
+    <div class="agent"><div class="agent-hd"><span class="agent-name">dispatcher</span><span class="zone">☁️ VPS</span></div><p>Telegram-бот, расписание, очередь. Отвечает только твоему ID.</p></div>
+  </div>
+</section>
+
+<section id="s12">
+  <div class="sechead"><div class="num">12</div><div>
+    <h2>Что нужно от тебя</h2>
+  </div></div>
+
+  <ul class="check">
+    <li class="done"><b>Сервисный аккаунт и Общий диск</b><span>Сделано, проверено загрузкой.</span></li>
+    <li class="done"><b>Формат презентации</b><span>Белая вёрстка утверждена.</span></li>
+    <li class="done"><b>Первый клиент</b><span>Иванова прогнана до PDF.</span></li>
+    <li><b>Проверь свои колонки в таблице Ивановой</b><span>«Статус» и «Мой комментарий» — я восстановил только «Моя цена» у двух отмеченных строк. Если вписывал что-то ещё до сдвига, глянь глазами.</span></li>
+    <li><b>Решение, куда идём</b><span>Bayut для полноты, или сразу сервер с Telegram. Я бы сначала Bayut и дневной прогон — автоматизировать стоит уже полный цикл.</span></li>
+    <li><b>К этапу 4</b><span>VPS (подберу и настрою), токен бота от @BotFather, твой Telegram ID.</span></li>
+  </ul>
+</section>
+
+<footer>
+  Чертёж от 10.09.2026 · этапы 0–3 закрыты на живом клиенте · следующий — Bayut и дневной прогон
+</footer>
+
+</div>

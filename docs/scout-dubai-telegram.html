@@ -1,0 +1,614 @@
+<title>Scout Dubai в Telegram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Golos+Text:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0A0B; --surface:#121214; --surface-2:#1A1A1D; --sunk:#0E0E10;
+  --ink:#ECECEE; --ink-2:#9C9CA4; --ink-3:#6E6E77;
+  --rule:#232327; --rule-2:#323238;
+  --gold:#C9A55C; --gold-soft:#C9A55C14; --gold-line:#C9A55C4D;
+  --blue:#6C9BD1; --blue-soft:#6C9BD112; --blue-line:#6C9BD140;
+  --green:#6FBF8A; --green-soft:#6FBF8A14; --green-line:#6FBF8A4D;
+  --coral:#E0654A; --coral-soft:#E0654A12; --coral-line:#E0654A4D;
+  --tg-bg:#0E1621; --tg-in:#182533; --tg-out:#2B5278; --tg-ink:#F5F5F5; --tg-ink-2:#8B9AA8;
+  --tg-btn:#FFFFFF14; --tg-link:#6AB3F3; --tg-head:#17212B; --tg-badge:#4A9BE0;
+}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); font-family:"Golos Text","Segoe UI",system-ui,sans-serif; font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased; margin:0}
+h1,h2,h3{font-family:Literata,Georgia,serif; font-weight:600; line-height:1.2; margin:0; text-wrap:balance}
+p{margin:0 0 .9em}
+a{color:var(--gold); text-underline-offset:3px; text-decoration-thickness:1px}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace; color:var(--gold); background:var(--gold-soft); padding:1px 5px; border-radius:4px; font-size:.9em}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.wrap{max-width:1040px; margin:0 auto; padding:0 24px}
+header{border-bottom:1px solid var(--rule); background:linear-gradient(180deg,#141416 0%,var(--bg) 100%)}
+.hd{padding:56px 0 40px}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); margin-bottom:18px}
+h1{font-size:clamp(32px,5vw,50px); letter-spacing:-.022em; margin-bottom:14px}
+.lede{font-size:18px; color:var(--ink-2); max-width:64ch}
+section{padding:52px 0; border-bottom:1px solid var(--rule)}
+section:last-of-type{border-bottom:none}
+.sechead{display:flex; gap:16px; align-items:baseline; margin-bottom:26px}
+.num{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--gold); padding-top:9px; flex:0 0 auto}
+h2{font-size:clamp(23px,3.2vw,30px); letter-spacing:-.018em}
+.sub{color:var(--ink-2); max-width:72ch; margin-top:7px; font-size:15.5px}
+h3{font-size:17px; margin:0 0 10px; letter-spacing:-.008em}
+.key{border:1px solid var(--gold-line); background:var(--gold-soft); border-radius:10px; padding:18px 22px; margin:22px 0; position:relative}
+.key::before{content:attr(data-label); position:absolute; top:-8px; left:18px; background:var(--bg); padding:0 9px; font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--gold)}
+.key p:last-child{margin-bottom:0}
+.key.crit{border-color:var(--coral-line); background:var(--coral-soft)} .key.crit::before{color:var(--coral)}
+.key b{color:var(--ink)}
+.tablewrap{overflow-x:auto; border:1px solid var(--rule); border-radius:10px; background:var(--surface)}
+table{width:100%; border-collapse:collapse; font-size:14.5px}
+th{text-align:left; font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); padding:12px 14px; border-bottom:1px solid var(--rule-2); white-space:nowrap}
+td{padding:11px 14px; border-bottom:1px solid var(--rule); vertical-align:top; color:var(--ink-2)}
+td:first-child{color:var(--ink); white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px}
+.card{background:var(--surface); border:1px solid var(--rule); border-radius:10px; padding:18px 20px}
+.card h3{font-size:16px}
+.card p{font-size:14.5px; color:var(--ink-2); margin:0}
+
+/* ---- сцены ---- */
+.flows{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:34px 26px; align-items:start}
+.flow .when{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--gold); margin-bottom:8px}
+.flow h3{font-size:16.5px; margin-bottom:12px}
+.flow .why{font-size:14px; color:var(--ink-2); margin:12px 0 0; max-width:42ch}
+.flow .why b{color:var(--ink); font-weight:500}
+
+/* ---- телефон ---- */
+.phone{background:var(--tg-bg); border:1px solid var(--rule-2); border-radius:22px; overflow:hidden; font-size:13.4px; line-height:1.42; color:var(--tg-ink); box-shadow:0 20px 40px -24px #000}
+.tg-head{display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--tg-head); border-bottom:1px solid #0A0F15}
+.tg-back{color:var(--tg-link); font-size:18px; line-height:1; margin-right:2px}
+.tg-ava{width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--gold),#7A5F2C); color:#111; font-family:Literata,serif; font-weight:600; font-size:14px; display:flex; align-items:center; justify-content:center; flex:0 0 auto}
+.tg-ava.c1{background:linear-gradient(135deg,#6C9BD1,#2E5A8A)} .tg-ava.c2{background:linear-gradient(135deg,#6FBF8A,#2F6B45)} .tg-ava.c3{background:linear-gradient(135deg,#E0654A,#8A3A28)} .tg-ava.c4{background:linear-gradient(135deg,#B58BD9,#5E3F80)} .tg-ava.gen{background:#2B3A4C; color:#CFE0F2}
+.tg-name{font-weight:600; font-size:14px; line-height:1.15}
+.tg-status{font-size:11.5px; color:var(--tg-ink-2)}
+.tg-body{padding:12px 10px 14px; display:flex; flex-direction:column; gap:7px}
+.date{align-self:center; font-size:11px; color:var(--tg-ink-2); background:#00000040; padding:2px 9px; border-radius:10px; margin:2px 0}
+.sys{align-self:center; font-size:11.5px; color:var(--tg-ink-2); text-align:center; background:#00000040; padding:3px 10px; border-radius:10px; max-width:92%}
+.m{max-width:90%; border-radius:12px; padding:7px 10px 6px; position:relative; white-space:pre-line; overflow-wrap:anywhere}
+.m.in{background:var(--tg-in); align-self:flex-start; border-bottom-left-radius:4px}
+.m.out{background:var(--tg-out); align-self:flex-end; border-bottom-right-radius:4px}
+.m .t{display:block; text-align:right; font-size:10.5px; color:var(--tg-ink-2); margin-top:2px; line-height:1}
+.m b{font-weight:600}
+.m a{color:var(--tg-link); text-decoration:none}
+.m .muted{color:var(--tg-ink-2)}
+.m .tag{display:block; font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.04em; color:var(--gold); margin-bottom:3px}
+.m .cmd{color:var(--tg-link)}
+.reply{border-left:2px solid var(--tg-link); padding:2px 8px; margin-bottom:5px; font-size:12px; color:var(--tg-ink-2); background:#FFFFFF08; border-radius:3px}
+.reply b{display:block; color:var(--tg-link); font-weight:600; font-size:11.5px}
+.kb{display:flex; flex-direction:column; gap:4px; width:90%; align-self:flex-start}
+.kb .row{display:flex; gap:4px}
+.kb .row span{flex:1; text-align:center; background:var(--tg-btn); border-radius:8px; padding:6px 6px; font-size:12.5px; color:var(--tg-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.kb .row span.url::after{content:" ↗"; color:var(--tg-ink-2)}
+.kb .row span.pressed{background:#FFFFFF28; outline:1px solid #FFFFFF30}
+.voice{display:flex; align-items:center; gap:9px}
+.voice .play{width:30px; height:30px; border-radius:50%; background:#FFFFFF; color:var(--tg-out); display:flex; align-items:center; justify-content:center; font-size:11px; flex:0 0 auto}
+.wave{display:flex; align-items:center; gap:2px; height:22px}
+.wave i{width:2.5px; background:#CFE0F2; border-radius:2px; display:block}
+.photo{width:100%; aspect-ratio:4/3; border-radius:9px; background:linear-gradient(160deg,#1E3A5A 0%,#0F2237 55%,#2A2521 100%); position:relative; margin-bottom:6px; overflow:hidden}
+.photo::after{content:"фото объявления"; position:absolute; right:8px; bottom:6px; font-family:"IBM Plex Mono",monospace; font-size:9.5px; color:#FFFFFF80}
+.photo.render{background:linear-gradient(170deg,#C9B79C 0%,#8A7A62 40%,#3D4A5C 100%)} .photo.render::after{content:"рендер застройщика"}
+.photo.plan{background:#F4F1EA repeating-linear-gradient(90deg,transparent 0 22px,#00000012 22px 23px)}
+.photo.plan::before{content:""; position:absolute; inset:14% 20%; border:1.5px solid #333; border-radius:2px}
+.photo.plan::after{content:"планировка от брокера"; color:#00000080}
+.photo.villa{background:linear-gradient(160deg,#5A7A9A 0%,#2E4A63 50%,#7A6A4E 100%)}
+.file{display:flex; gap:10px; align-items:center}
+.file .ic{width:38px; height:38px; border-radius:8px; background:var(--tg-link); color:#0E1621; display:flex; align-items:center; justify-content:center; font-family:"IBM Plex Mono",monospace; font-size:10px; font-weight:500; flex:0 0 auto}
+.file .fn{font-weight:600; font-size:13px}
+.file .fs{font-size:11.5px; color:var(--tg-ink-2)}
+.pay{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:#CFE0F2; background:#00000030; border-radius:6px; padding:5px 8px; margin:4px 0; white-space:pre; overflow-x:auto}
+
+/* ---- список тем ---- */
+.topics{display:flex; flex-direction:column}
+.topic{display:flex; gap:11px; align-items:center; padding:9px 12px; border-bottom:1px solid #0A0F15}
+.topic:last-child{border-bottom:none}
+.topic .ic{width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex:0 0 auto; background:#1F2E3F}
+.topic .ic.gen{background:#2B3A4C} .topic .ic.c1{background:#2E5A8A} .topic .ic.c2{background:#2F6B45} .topic .ic.c3{background:#8A3A28} .topic .ic.c4{background:#5E3F80} .topic .ic.arch{background:#1A222B; filter:grayscale(1); opacity:.6}
+.topic .tx{flex:1; min-width:0}
+.topic .n{display:flex; justify-content:space-between; gap:8px; font-weight:600; font-size:13.5px}
+.topic .n span{font-weight:400; font-size:11.5px; color:var(--tg-ink-2); flex:0 0 auto}
+.topic .p{font-size:12.5px; color:var(--tg-ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.topic .p b{color:var(--tg-ink); font-weight:500}
+.topic .badge{background:var(--tg-badge); color:#fff; font-size:11px; font-weight:600; border-radius:10px; padding:1px 7px; min-width:20px; text-align:center; flex:0 0 auto}
+.topic .badge.mute{background:#3A4A5C}
+.topic.arch .n,.topic.arch .p{color:var(--tg-ink-2)}
+.pin{font-size:10px; color:var(--tg-ink-2)}
+
+/* ---- вкладки таблицы ---- */
+.sheetbar{display:flex; gap:2px; overflow-x:auto; background:#F1F3F4; border-radius:8px; padding:6px 8px 0; border:1px solid var(--rule-2)}
+.sheetbar span{flex:0 0 auto; font-family:"Golos Text",sans-serif; font-size:12.5px; color:#3C4043; background:#F1F3F4; padding:6px 12px; border-radius:6px 6px 0 0; border-bottom:3px solid transparent; white-space:nowrap}
+.sheetbar span.on{background:#fff; color:#188038; border-bottom-color:#188038; font-weight:600}
+.sheetbar span.grey{color:#9AA0A6; border-bottom-color:#9AA0A6}
+.sheetbar span.gold{border-bottom-color:#C9A55C}
+.sheetbar span.blue{border-bottom-color:#6C9BD1}
+.tree{font-family:"IBM Plex Mono",monospace; font-size:13px; line-height:1.75; color:var(--ink-2); background:var(--sunk); border:1px solid var(--rule); border-radius:10px; padding:16px 20px; overflow-x:auto; white-space:pre}
+.tree b{color:var(--ink); font-weight:500} .tree i{color:var(--gold); font-style:normal} .tree s{color:var(--ink-3); text-decoration:none}
+.legend{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:8px 20px; font-size:14.5px; color:var(--ink-2)}
+.legend div{padding:7px 0; border-bottom:1px solid var(--rule); display:flex; gap:10px}
+.legend div em{font-style:normal; flex:0 0 26px; text-align:center}
+.legend div b{color:var(--ink); font-weight:500}
+.check{padding:0; margin:0; list-style:none}
+.check li{padding:13px 0 13px 34px; position:relative; border-bottom:1px solid var(--rule); font-size:15px}
+.check li:last-child{border-bottom:none}
+.check li::before{content:""; position:absolute; left:0; top:17px; width:15px; height:15px; border:1.5px solid var(--rule-2); border-radius:3.5px; background:var(--surface)}
+.check li.done::before{content:"✓"; color:var(--green); border-color:var(--green-line); background:var(--green-soft); font-size:10px; display:flex; align-items:center; justify-content:center; line-height:1}
+.check li b{display:block; font-family:Literata,serif; font-size:15.5px; margin-bottom:2px}
+.check li.done b{color:var(--ink-3)}
+.check li span{color:var(--ink-2); font-size:14px}
+footer{padding:40px 0 60px; color:var(--ink-3); font-size:13px; font-family:"IBM Plex Mono",monospace}
+@media (prefers-reduced-motion: no-preference){ .kb .row span{transition:background .15s} }
+</style>
+
+<header><div class="wrap"><div class="hd">
+  <div class="eyebrow">Алексей Широков · Scout Dubai · этап 4 · ред. 2 · 12.09.2026</div>
+  <h1>Scout Dubai в Telegram</h1>
+  <p class="lede">Один бот, одна закрытая группа, тема на каждого клиента. Ниже — рабочий день с ним целиком: от голосового брифа до PDF в чате, с кнопками, значками и тем, что он присылает сам. Все цифры — из живых прогонов по Ивановой, остальные клиенты — примеры.</p>
+</div></div></header>
+
+<div class="wrap">
+
+<section>
+  <div class="sechead"><div class="num">01</div><div><h2>Одна группа, тема на клиента</h2><p class="sub">Это Telegram-группа с включёнными темами. В ней ты и бот. Каждый клиент — своя тема: всё про него живёт там, и написанное в теме бот относит к этому клиенту без уточнений. General — общая: утренняя сводка, новые брифы, список клиентов.</p></div></div>
+  <div class="grid2" style="align-items:start">
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava" style="border-radius:10px">S</div><div><div class="tg-name">Scout Dubai</div><div class="tg-status">2 участника · 6 тем</div></div></div>
+      <div class="topics">
+        <div class="topic"><div class="ic gen">📋</div><div class="tx"><div class="n">General <span class="pin">📌 · 08:00</span></div><div class="p"><b>Scout:</b> Утро · 4 клиента · Иванова 🆕 3 💰 2 · Ким 🆕 7…</div></div><div class="badge">1</div></div>
+        <div class="topic"><div class="ic c1">🏠</div><div class="tx"><div class="n">Иванова Мария <span>08:00</span></div><div class="p"><b>Scout:</b> Marina Shores 2BR · 🆕 3 новых, 2 у русскоязычных…</div></div><div class="badge">2</div></div>
+        <div class="topic"><div class="ic c4">🏙</div><div class="tx"><div class="n">Ким Анастасия <span>08:00</span></div><div class="p"><b>Scout:</b> Downtown 1BR · 🆕 7 новых — первый день после замены…</div></div><div class="badge">1</div></div>
+        <div class="topic"><div class="ic c2">🌴</div><div class="tx"><div class="n">Гареев Тимур <span>вчера</span></div><div class="p"><b>Ты:</b> Что там по виллам с частным пляжем?</div></div></div>
+        <div class="topic"><div class="ic c3">🏗</div><div class="tx"><div class="n">Ахметов Руслан <span>⏸ · 5 сен</span></div><div class="p"><b>Scout:</b> Пауза. Прогон остановлен, книга сохранена.</div></div><div class="badge mute">·</div></div>
+        <div class="topic arch"><div class="ic arch">✓</div><div class="tx"><div class="n">Петрова Елена <span>закрыта</span></div><div class="p"><b>Scout:</b> ✓ Куплено · Marina Gate 1BR · 2 380 000. Тема в архиве.</div></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px"><h3>Почему тема, а не тег в одном чате</h3><p>Шесть клиентов в одной ленте — это шесть дайджестов подряд и «покажи новые» без адресата. В теме контекст задан самим местом, где ты пишешь: «покажи новые» в теме Кима — это про Кима. Иконка темы — тип основной сделки: 🏠 вторичка, 🏗 от застройщика, 🌴 вилла, 🏙 центр. Закрытая сделка — тема закрывается и уходит в архив, но остаётся читаемой.</p></div>
+      <div class="card" style="margin-bottom:14px"><h3>Внутри темы — подборы</h3><p>У клиента может быть несколько подборов сразу, и с разных рынков. Каждое сообщение бота о конкретном объекте начинается строкой <span class="mono" style="color:var(--gold)">Иванова · Marina Shores 2BR</span> — чтобы и в общей ленте «все темы» карточки не путались.</p></div>
+      <div class="card"><h3>Бот отвечает только тебе</h3><p>Проверяет группу и твой Telegram ID. Кому-то другому, кто попадёт в группу или напишет боту в личку, — молчит.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div class="num">02</div><div><h2>Утро: что пришло само</h2><p class="sub">08:00 по Дубаю прогон прошёл по всем активным подборам. Бот пишет в General одну строку на клиента, а в темы тех, у кого что-то изменилось, — подробности. Без изменений — тишина в теме.</p></div></div>
+  <div class="flows">
+
+  <div class="flow">
+    <div class="when">General · 08:00 · пришло само</div>
+    <h3>Сводка по всем клиентам</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava gen">📋</div><div><div class="tg-name">General</div><div class="tg-status">Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="date">пятница, 13 сентября</div>
+        <div class="m in"><b>Утро · 4 активных клиента</b>
+
+🏠 <b>Иванова</b> · Marina Shores 2BR · 🆕 3 · 💰 2 · ⚰️ 1 · 🔥 1
+🏗 <b>Иванова</b> · Off-plan Business Bay · 🆕 1 старт продаж
+🏙 <b>Ким</b> · Downtown 1BR · 🆕 7 — первый день
+🌴 <b>Гареев</b> · Palm Villas · без изменений
+🌴 <b>Гареев</b> · Jumeirah Islands · 💰 1
+
+⏸ Ахметов — на паузе
+<span class="muted">Сделки: Иванова через 32 дня, Ким через 18.</span><span class="t">08:00</span></div>
+        <div class="kb"><div class="row"><span class="url">📊 Панель</span><span>/clients</span></div></div>
+      </div>
+    </div>
+    <p class="why">Одна строка на подбор, значки вместо слов: 🆕 новые, 💰 цена изменилась, ⚰️ снят с продажи, 🔥 дистресс под бриф. «Панель» — общая Google-книга со всеми подборами всех клиентов, одно место, где видно всё.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">Тема Иванова · 08:00 · пришло само</div>
+    <h3>Подробности по клиенту, по подборам</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c1">🏠</div><div><div class="tg-name">Иванова Мария</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="date">пятница, 13 сентября</div>
+        <div class="m in"><span class="tag">Иванова · Marina Shores 2BR</span>🆕 <b>3 новых</b>, 2 у русскоязычных
+💰 2 сменили цену: −150 000 и +40 000
+⚰️ 1 снят — не из одобренных
+🔥 Дистресс: 2BR в Marina Shores, −18 % к OP, distressonly
+
+Лучшая цена в подборе: <b>−22 % к медиане</b> 2BR<span class="t">08:00</span></div>
+        <div class="kb"><div class="row"><span>🆕 Показать новые</span><span>💰 Цены</span><span>🔥</span></div><div class="row"><span class="url">📊 Лист</span></div></div>
+        <div class="m in"><span class="tag">Иванова · Off-plan Business Bay</span>🏗 <b>Старт продаж</b>: Binghatti Skyrise, 2BR от 2 640 000, взнос 20 %, сдача Q2 2028. Балл <b>81</b> — второй в подборе.<span class="t">08:00</span></div>
+        <div class="kb"><div class="row"><span>Показать проект</span><span class="url">📊 Лист</span></div></div>
+      </div>
+    </div>
+    <p class="why">Два подбора у одного человека — два блока, каждый со своей строкой-тегом и своими кнопками. Всё, что здесь написано, уже лежит в её книге: новые строки сверху голубым, изменения цен оранжевым, снятые серым.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">Тема Иванова · после «Показать новые»</div>
+    <h3>Карточка объекта — вторичка</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c1">🏠</div><div><div class="tg-name">Иванова Мария</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="m out">🆕 Показать новые<span class="t">08:41</span></div>
+        <div class="m in"><span class="tag">Иванова · Marina Shores 2BR · 1 из 3</span><div class="photo"></div><b>2BR · 105,1 м² · 3 850 000 AED</b>
+36 632 AED/м² · <b>−12 % к медиане</b>
+Full Marina View · этаж средний
+🇷🇺 Dhanvanthri · Prop Plus · Russian в профиле
+Сделки DLD по такой площади: 3 640 000 медиана за лето
+🔎 ещё 1 объявление этой квартиры — от 3 650 000
+<a href="#">propertyfinder.ae/…/141439708</a><span class="t">08:41</span></div>
+        <div class="kb"><div class="row"><span>✅ Одобрить</span><span>📩 Запросить</span><span>🔎</span><span>⏭</span></div></div>
+        <div class="m out">⏭<span class="t">08:42</span></div>
+        <div class="m in"><span class="tag">Иванова · Marina Shores 2BR · 2 из 3</span><div class="photo" style="background:linear-gradient(160deg,#2A3F57 0%,#17263A 55%,#3A2E27 100%)"></div><b>2BR · 112 м² · 4 200 000 AED</b>
+37 500 AED/м² · −9 % к медиане
+Marina View · высокий этаж
+Agent: Faisal · Betterhomes · без 🇷🇺
+<a href="#">propertyfinder.ae/…/142011530</a><span class="t">08:42</span></div>
+        <div class="kb"><div class="row"><span>✅ Одобрить</span><span>📩 Запросить</span><span>⏭</span></div></div>
+      </div>
+    </div>
+    <p class="why">Карточка — фото, факты, три кнопки. Каждая кнопка несёт в себе клиента, подбор и объект, так что тап однозначен в любом порядке сообщений. <b>⏭</b> листает дальше, <b>✅</b> — это твоя галочка «Одобрено» в таблице, <b>📩</b> — твоя галочка «Запросить». Таблицу открывать не нужно, но она — то же самое.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">Тема Иванова · после «Показать проект»</div>
+    <h3>Карточка проекта — от застройщика</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c1">🏠</div><div><div class="tg-name">Иванова Мария</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="m out">Показать проект<span class="t">09:10</span></div>
+        <div class="m in"><span class="tag">Иванова · Off-plan Business Bay</span><div class="photo render"></div>🏗 <b>Binghatti Skyrise · 2BR от 2 640 000 AED</b>
+Балл <b>81</b> / 100 · Business Bay · Binghatti
+Фаза: <b>бронирование открыто</b> · старт 12.09
+Сдача Q2 2028 · стройка 0 %
+71 м² от · 37 180 AED/м² · <b>−8 % к району</b>, +3 % к DLD
+<div class="pay">взнос      20 %   528 000
+до ключей  40 %   в 8 платежей
+на ключах  40 %   Q2 2028</div>
+<span class="muted">Балл: цена к району −8 → +18; пресейл → +15; взнос 20 % в лимите → +10; сдача 2028 → +8; к DLD +3 → −4.</span>
+<a href="#">propertyfinder.ae/new-projects/…</a><span class="t">09:10</span></div>
+        <div class="kb"><div class="row"><span>✅ Одобрить</span><span class="url">📄 Брошюра</span><span>⏭</span></div></div>
+      </div>
+    </div>
+    <p class="why">Другой рынок — другая карточка: рендер вместо фото, платёжный план вместо брокера, балл с разбором вместо «к медиане». Кнопка брошюры появляется, когда ты положил ссылку в колонку «Брошюра» — бот их не ищет. Одобрение работает так же; PDF по проекту — следующая задача.</p>
+  </div>
+
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div class="num">03</div><div><h2>Новый клиент и смена запроса</h2><p class="sub">Бриф говоришь голосом в General. Бот показывает, что понял, ты жмёшь «Запустить» — через пять минут есть тема, книга и первый сбор. Передумал клиент — новый подбор, старый закрывается или живёт параллельно, и это всегда твой выбор кнопкой.</p></div></div>
+  <div class="flows">
+
+  <div class="flow">
+    <div class="when">General · бриф голосом</div>
+    <h3>Новый клиент за одно голосовое</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava gen">📋</div><div><div class="tg-name">General</div><div class="tg-status">Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="date">четверг, 12 сентября</div>
+        <div class="m out"><div class="voice"><div class="play">▶</div><div class="wave"><i style="height:6px"></i><i style="height:14px"></i><i style="height:20px"></i><i style="height:10px"></i><i style="height:16px"></i><i style="height:22px"></i><i style="height:8px"></i><i style="height:14px"></i><i style="height:18px"></i><i style="height:6px"></i><i style="height:12px"></i><i style="height:20px"></i><i style="height:9px"></i><i style="height:15px"></i><i style="height:7px"></i><i style="height:18px"></i><i style="height:11px"></i><i style="height:5px"></i><i style="height:13px"></i><i style="height:17px"></i></div><span class="muted">0:38</span></div><span class="t">10:12</span></div>
+        <div class="m in"><b>Новый клиент — проверь:</b>
+<b>Ким Анастасия</b> · приезд 1 октября
+🏠 Вторичка · <b>JVC</b> · 3BR · до <b>2 200 000 AED</b>
+Ипотека, первый взнос 25 %
+Пожелания: закрытый комплекс, парковка на 2 машины
+<span class="muted">Не расслышал контакт — добавишь позже.</span><span class="t">10:12</span></div>
+        <div class="kb"><div class="row"><span class="pressed">✅ Запустить</span><span>✏️ Поправить</span></div></div>
+        <div class="sys">Scout создал тему «Ким Анастасия»</div>
+        <div class="m in">Завёл: книга, папка на Диске, тема <a href="#">Ким Анастасия →</a>. Собираю JVC 3BR — напишу туда.<span class="t">10:13</span></div>
+      </div>
+    </div>
+    <p class="why">Голос → текст → карточка по схеме. Недостающее бот спрашивает <b>одним</b> сообщением, а не серией уточнений. После «Запустить» разговор переезжает в тему клиента — и там уже живёт всё.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">Тема Ким · первый сбор</div>
+    <h3>Что показал рынок</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c4">🏙</div><div><div class="tg-name">Ким Анастасия</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="date">четверг, 12 сентября</div>
+        <div class="m in"><span class="tag">Ким · JVC 3BR</span><b>Собрано за 4 мин</b>
+58 объявлений 3BR по JVC · <b>19 🇷🇺</b>
+В бюджет до 2,2 млн: <b>23</b>
+Медиана 3BR: 11 460 AED/м²
+Лучшая цена: −17 % к медиане
+🔥 Дистресса под бриф нет
+
+<span class="muted">Заметка по рынку: 3BR в JVC до 2,2 млн — это в основном старые башни 2014–2017 гг. без закрытой территории. Закрытые комплексы с парковкой на 2 машины начинаются от 2,6 млн.</span><span class="t">10:17</span></div>
+        <div class="kb"><div class="row"><span class="url">📊 Книга</span><span>🏆 Топ-7</span><span>🆕 Карточки</span></div></div>
+      </div>
+    </div>
+    <p class="why">Первое сообщение в теме — сводка сбора и вывод по рынку, который ты дальше говоришь клиенту. Здесь этот вывод и подтолкнёт Кима передумать.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">Тема Ким · клиент передумал</div>
+    <h3>Заменить или добавить — решаешь ты</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c4">🏙</div><div><div class="tg-name">Ким Анастасия</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="date">суббота, 14 сентября</div>
+        <div class="m out">Трёшка в JVC больше не нужна. Теперь однушка в Даунтауне, до 2,5 млн, желательно вид на Бурдж, готовая.<span class="t">12:30</span></div>
+        <div class="m in"><b>Новый подбор:</b>
+🏙 Вторичка · <b>Downtown</b> · 1BR · до <b>2 500 000</b> · готовая
+Пожелание: вид на Burj Khalifa
+
+У Кима уже есть активный подбор <b>JVC 3BR</b> (58 объектов, 0 одобрено). Что с ним?<span class="t">12:30</span></div>
+        <div class="kb"><div class="row"><span class="pressed">🔁 Заменить JVC 3BR</span></div><div class="row"><span>➕ Добавить параллельно</span><span>✖ Отмена</span></div></div>
+        <div class="m in">Закрыл <b>JVC 3BR</b>: лист переименован в <span class="mono">✕ JVC 3BR</span>, серый, в конце книги — всё, что там было, осталось. Открыл <b>Downtown 1BR</b>, собираю…<span class="t">12:31</span></div>
+        <div class="m in"><span class="tag">Ким · Downtown 1BR</span><b>Собрано</b> · 214 объявлений · в бюджет <b>61</b> · 🇷🇺 27
+Вид на Burj заявлен у 18. Медиана 1BR: 28 900 AED/м².<span class="t">12:36</span></div>
+        <div class="kb"><div class="row"><span class="url">📊 Книга</span><span>🆕 Карточки</span></div></div>
+      </div>
+    </div>
+    <p class="why">Бот <b>никогда не правит подбор молча</b>. Замена — старый лист закрывается, но не удаляется: история того, что человеку показывали, остаётся в его книге. «Добавить параллельно» — для клиента, который берёт несколько квартир.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">Тема Гареев · несколько подборов</div>
+    <h3>Один клиент — вилла и участок, вопрос сразу по обоим</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c2">🌴</div><div><div class="tg-name">Гареев Тимур</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="m out">Что там по виллам с частным пляжем до 30? И по островам — есть что-то со сдачей в этом году?<span class="t">19:05</span></div>
+        <div class="m in"><span class="tag">Гареев · Palm Villas</span><b>Частный пляж, до 30 млн — 3:</b>
+1. Garden Homes · 5BR · 650 м² · <b>27 500 000</b> · −6 % · 🇷🇺 Olga, Driven
+2. Signature Villas · 6BR · 780 м² · <b>29 800 000</b> · −2 % · Metropolitan
+3. Garden Homes · 4BR · 560 м² · <b>24 900 000</b> · −11 % · 🇷🇺 Timur, AX
+
+<span class="tag" style="margin-top:6px">Гареев · Jumeirah Islands</span><b>Сдача в 2026 — 1:</b>
+1. Jumeirah Islands · 4BR · <b>12 400 000</b> · сдача Q4 2026 · 💰 вчера −300 000
+
+<span class="muted">Пляж — из заголовков объявлений; в описаниях его заявляют чаще, но я это не учитываю.</span><span class="t">19:05</span></div>
+        <div class="kb"><div class="row"><span>📩 Запросить все 4</span><span>Карточки</span></div></div>
+      </div>
+    </div>
+    <p class="why">Вопрос свободным текстом, ответ — по каждому подбору отдельным блоком с тегом, каждая строка ведёт на объект. Здесь работают мозги, а не парсер, но <b>цифры — только из таблиц</b>, бот их не сочиняет.</p>
+  </div>
+
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div class="num">04</div><div><h2>Брокер, планировка, одобрение, PDF</h2><p class="sub">Тот же цикл, что сегодня, — но всё под одной карточкой. Отправляешь брокеру ты сам; планировку пересылаешь ответом на карточку; цену называешь ты; PDF приходит файлом в тему и ссылкой в таблицу. Если ту же квартиру продаёт кто-то ещё — бот покажет всех, с ценами и личными номерами.</p></div></div>
+  <div class="flows">
+
+  <div class="flow">
+    <div class="when">Тема Иванова · запрос брокеру</div>
+    <h3>Одна кнопка вместо страницы с кнопками</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c1">🏠</div><div><div class="tg-name">Иванова Мария</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="m out">📩 Запросить<span class="t">08:43</span></div>
+        <div class="m in"><span class="tag">Иванова · Marina Shores 2BR</span><b>Dhanvanthri · Prop Plus</b>
+2BR · 105,1 м² · 3 850 000 · ref PP-S-14118
+Ссылка свежая. Текст Property Finder готов — <b>не редактируй</b>, иначе до агента не дойдёт. Свои вопросы — уже в ответной переписке.<span class="t">08:43</span></div>
+        <div class="kb"><div class="row"><span class="url">💬 Открыть WhatsApp</span></div><div class="row"><span class="pressed">✔ Отправил</span><span>✖ Передумал</span></div></div>
+        <div class="m in">Записал: <b>Запрошено 13.09</b>. Когда брокер пришлёт планировку — ответь на карточку фотографией.<span class="t">08:44</span></div>
+        <div class="date">через 3 часа</div>
+        <div class="m out"><div class="reply"><b>Scout Dubai</b>Иванова · Marina Shores 2BR · 2BR · 105,1 м² · 3 850 000 AED…</div><div class="photo plan"></div><span class="t">11:57</span></div>
+        <div class="m in">Планировка приложена к <b>2BR · 105,1 м² · Prop Plus</b>. Презентации ещё нет — соберу, когда одобришь.<span class="t">11:57</span></div>
+      </div>
+    </div>
+    <p class="why">URL-кнопка открывает WhatsApp с готовым текстом PF — шлёшь ты. «Отправил» ставит дату в «Запрошено». Планировка: <b>ответ на карточку</b> фотографией — бот знает, к какому объекту; подпись-зацепка («Dhanvanthri») тоже работает, если ответить неудобно.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">Тема Иванова · одобрение</div>
+    <h3>Цена — твоя, PDF — в тему</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c1">🏠</div><div><div class="tg-name">Иванова Мария</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="m out">✅ Одобрить<span class="t">14:20</span></div>
+        <div class="m in"><span class="tag">Иванова · Marina Shores 2BR</span><b>2BR · 105,1 м² · Prop Plus</b>
+В объявлении 3 850 000. <b>Твоя цена для клиента?</b>
+<span class="muted">Из объявления не подставлю — только то, что назовёшь.</span><span class="t">14:20</span></div>
+        <div class="m out">3 720 000<span class="t">14:22</span></div>
+        <div class="m in">✅ Одобрено · Моя цена <b>3 720 000</b> — записал в её лист от твоего имени.
+Собираю: 11 фото объявления + планировка от брокера…<span class="t">14:22</span></div>
+        <div class="m in"><div class="file"><div class="ic">PDF</div><div><div class="fn">marina_shores_2br_105sqm.pdf</div><div class="fs">4,8 МБ · 7 листов</div></div></div>
+Обложка · описание · 3 галереи · планировка · заключение
+<b>3 720 000 AED ≈ 1 012 934 USD</b>
+Ниже медианы башни на 15 % — в заключении так и написано.
+<a href="#">Ссылка на Диске — в колонке «Презентация»</a><span class="t">14:24</span></div>
+        <div class="kb"><div class="row"><span class="url">📂 Папка подбора</span><span>🔁 Пересобрать</span></div></div>
+      </div>
+    </div>
+    <p class="why">Единственное место, где бот пишет в <b>твои</b> колонки — и только после твоего ответа. Прогон по расписанию их не касается никогда. PDF обновляется на месте: ссылка, которую ты уже отправил клиенту, не протухает.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">Тема Иванова · перед приездом · пришло само</div>
+    <h3>Напоминание, покупка, закрытие</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c1">🏠</div><div><div class="tg-name">Иванова Мария</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="date">среда, 8 октября</div>
+        <div class="m in">📅 <b>Приезд через 7 дней</b> · 15 октября
+Marina Shores 2BR: одобрено <b>5</b>, презентаций <b>5</b>, запрошено 7, ответили 4.
+Off-plan Business Bay: одобрено 1, брошюра есть.
+Не запрошено из одобренных: —<span class="t">08:00</span></div>
+        <div class="kb"><div class="row"><span class="url">📂 Все PDF</span><span>Свести в один файл</span></div></div>
+        <div class="date">пятница, 17 октября</div>
+        <div class="m out">Купила вторую, Prop Plus, за 3 650 000. Marina Shores закрываем, оффплан пока оставь.<span class="t">16:40</span></div>
+        <div class="m in">Закрываю <b>Marina Shores 2BR</b> как ✓ куплено · 3 650 000 · Prop Plus. Лист станет <span class="mono">✓ Marina Shores 2BR</span>, прогон по нему остановится. <b>Off-plan Business Bay</b> продолжает.<span class="t">16:40</span></div>
+        <div class="kb"><div class="row"><span class="pressed">✔ Подтверждаю</span><span>✖ Отмена</span></div></div>
+        <div class="m in">Готово. В Панели: Иванова · 1 активный подбор · 1 куплено.<span class="t">16:41</span></div>
+      </div>
+    </div>
+    <p class="why">За 7 и за 2 дня до даты сделки бот сам сводит, что готово. Покупка — закрытие подбора с причиной, лист остаётся с галочкой ✓. Когда закроются все подборы клиента, тема уйдёт в архив, книга и папка останутся.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">Тема Иванова · после «🔎 Дубли» или само после одобрения</div>
+    <h3>Одна квартира — несколько объявлений</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava c1">🏠</div><div><div class="tg-name">Иванова Мария</div><div class="tg-status">тема · Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="m out">🔎 Дубли<span class="t">14:25</span></div>
+        <div class="m in"><span class="tag">Иванова · Marina Shores 2BR</span><b>2BR · 105,05 м² по DLD · Marina Shores</b>
+Эту же площадь до сотых продают <b>2 объявления</b>:
+
+<b>≈ 3 650 000</b> · Elena Dmitrieva · Reap · с 02.08 · 🇷🇺
+<span class="muted">площадь та же, фото разные — уточнить этаж</span>
+<b>✅ 4 467 888</b> · Dhanvanthri · Prop Plus · с 28.08 · <span class="muted">одобрено, PDF 3 720 000</span>
+
+Разница к дешёвому: <b>−817 888</b> (−18 %). Серия не указана ни в одном.
+Номер юнита: реестра здания нет — назвать не могу.<span class="t">14:25</span></div>
+        <div class="kb"><div class="row"><span class="url">💬 Написать Elena</span><span>✅ Одобрить дешевле</span></div><div class="row"><span class="url">📊 Лист «Дубли»</span></div></div>
+        <div class="date">другой объект · подтверждённый дубль</div>
+        <div class="m in"><span class="tag">Иванова · Marina Shores 2BR</span><b>2BR · 110,57 м² по DLD</b>
+<b>✔ одна квартира</b> — одно разрешение DLD 156510 у обоих:
+<b>3 500 000</b> · Maksim Tuguchev · с 14.07
+<b>3 450 000</b> · Maksim Tuguchev · с 21.08 <span class="muted">— тот же агент, переставил</span><span class="t">14:26</span></div>
+        <div class="kb"><div class="row"><span class="url">💬 Написать Maksim</span><span class="url">📊 Лист «Дубли»</span></div></div>
+      </div>
+    </div>
+    <p class="why">Две ступени, и бот их не смешивает. <b>✔ одна квартира</b> — совпало разрешение DLD или общие фото. <b>≈ похоже</b> — совпала только площадь до сотых: в башне такая по одной на этаж, так что это либо та же квартира у второго брокера (в Дубае норма), либо соседняя по стояку — бот пишет «уточнить этаж». Кнопка «Написать» ведёт на <b>личный номер агента из карты DLD</b>, не на шлюз PF. Номер юнита бот не придумывает: пока нет реестра здания — так и говорит.</p>
+  </div>
+
+  <div class="flow">
+    <div class="when">General · служебное</div>
+    <h3>Список, пауза, сбои</h3>
+    <div class="phone">
+      <div class="tg-head"><span class="tg-back">‹</span><div class="tg-ava gen">📋</div><div><div class="tg-name">General</div><div class="tg-status">Scout Dubai</div></div></div>
+      <div class="tg-body">
+        <div class="m out"><span class="cmd">/clients</span><span class="t">08:12</span></div>
+        <div class="m in"><b>Активные · 4</b>
+🏠 Иванова · 2 подбора · 5 ✅ · сделка 15.10
+🏙 Ким · 1 подбор · 0 ✅ · приезд 01.10
+🌴 Гареев · 2 подбора · 2 ✅
+⏸ Ахметов · 1 подбор · пауза с 05.09
+<b>Архив · 1</b> · Петрова ✓<span class="t">08:12</span></div>
+        <div class="kb"><div class="row"><span>⏸ Пауза</span><span>▶ Возобновить</span><span>➕ Подбор</span></div><div class="row"><span class="url">📊 Панель</span><span>✕ Закрыть…</span></div></div>
+        <div class="date">вторник, 17 сентября</div>
+        <div class="m in">⚠️ <b>Прогон 08:00 не прошёл по Property Finder</b> — 403 на страницах выдачи. Дистресс, каталог проектов и книги в порядке.
+Повторю в 12:00. Если снова 403 — скорее всего IP сервера в блоке, напишу отдельно.<span class="t">08:01</span></div>
+        <div class="m in">✅ 12:00 — прошло. Иванова 🆕 1 · Ким 🆕 2 · остальные без изменений.<span class="t">12:00</span></div>
+        <div class="m in">⚠️ <b>Иванова · одобренный объект снят</b> — 2BR · 105,1 м² · Prop Plus, второй день нет в выдаче. Строку не трогал: серая, зачёркнута; PDF остаётся. Стоит спросить Dhanvanthri напрямую.<span class="t">08:00</span></div>
+        <div class="kb"><div class="row"><span class="url">💬 Написать брокеру</span><span>Закрыть объект</span></div></div>
+      </div>
+    </div>
+    <p class="why">Правило: источник недоступен — <b>не гадать</b>, одно сообщение и повтор по расписанию. Снятый одобренный объект — отдельное уведомление, потому что у клиента может быть его PDF. Ночью, 22:00–08:00, бот молчит.</p>
+  </div>
+
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div class="num">05</div><div><h2>Значки и кнопки — весь словарь</h2><p class="sub">Одни и те же во всех темах, в таблицах и в Панели. Ничего сверх этого списка.</p></div></div>
+  <div class="grid2">
+    <div>
+      <h3 style="margin-bottom:12px">Значки</h3>
+      <div class="legend">
+        <div><em>🏠</em><span><b>вторичка</b> — подбор по объявлениям</span></div>
+        <div><em>🏗</em><span><b>от застройщика</b> — подбор по проектам</span></div>
+        <div><em>🌴 🏙</em><span>иконки тем — тип основной сделки</span></div>
+        <div><em>🆕</em><span><b>новый</b> объект, голубая строка 3 дня</span></div>
+        <div><em>💰</em><span><b>цена изменилась</b>, оранжевая строка</span></div>
+        <div><em>⚰️</em><span><b>снят</b> с продажи, серая строка</span></div>
+        <div><em>🔥</em><span><b>дистресс</b> под бриф клиента</span></div>
+        <div><em>🇷🇺</em><span><b>русскоязычный</b> брокер — по профилю</span></div>
+        <div><em>✅</em><span><b>одобрено</b> — твоя галочка</span></div>
+        <div><em>📩 ✔</em><span><b>запрос</b> брокеру · отправлен</span></div>
+        <div><em>📄</em><span>PDF или брошюра</span></div>
+        <div><em>🔎 ✔ ≈</em><span><b>дубли</b> · одна квартира точно · похоже, одна</span></div>
+        <div><em>📅</em><span>напоминание о дате сделки</span></div>
+        <div><em>⚠️</em><span>внимание: сбой или снятый одобренный</span></div>
+        <div><em>✕ ✓ ⏸</em><span>подбор закрыт · куплено · пауза</span></div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:12px">Наборы кнопок</h3>
+      <div class="tablewrap"><table>
+        <tr><th>Под чем</th><th>Кнопки</th></tr>
+        <tr><td>Карточка объекта 🏠</td><td>✅ Одобрить · 📩 Запросить · 🔎 (если есть дубли) · ⏭</td></tr>
+        <tr><td>Карточка проекта 🏗</td><td>✅ Одобрить · 📄 Брошюра ↗ · ⏭</td></tr>
+        <tr><td>Группа дублей 🔎</td><td>💬 Написать &lt;брокер&gt; ↗ · ✅ Одобрить дешевле · 📊 Лист «Дубли» ↗</td></tr>
+        <tr><td>Запрос брокеру</td><td>💬 Открыть WhatsApp ↗ / ✔ Отправил · ✖ Передумал</td></tr>
+        <tr><td>Бриф нового клиента</td><td>✅ Запустить · ✏️ Поправить</td></tr>
+        <tr><td>Новый подбор у клиента</td><td>🔁 Заменить «…» / ➕ Добавить параллельно · ✖ Отмена</td></tr>
+        <tr><td>Сводка в теме</td><td>🆕 Показать новые · 💰 Цены · 🔥 · 📊 Лист ↗</td></tr>
+        <tr><td>Сводка в General</td><td>📊 Панель ↗ · /clients</td></tr>
+        <tr><td>/clients</td><td>⏸ Пауза · ▶ Возобновить · ➕ Подбор · ✕ Закрыть…</td></tr>
+        <tr><td>Любое необратимое</td><td>✔ Подтверждаю · ✖ Отмена</td></tr>
+      </table></div>
+      <p style="font-size:14px; color:var(--ink-2); margin-top:12px">Стрелка ↗ — кнопка открывает ссылку (таблицу, папку, WhatsApp), остальные — действие внутри бота. Необратимое — закрыть подбор, заменить, снять одобрение — всегда через подтверждение.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div class="num">06</div><div><h2>Что бот пишет сам и когда</h2><p class="sub">Всё остальное — только в ответ тебе.</p></div></div>
+  <div class="tablewrap"><table>
+    <tr><th>Когда</th><th>Куда</th><th>Что</th></tr>
+    <tr><td>08:00 Дубай</td><td>General</td><td>Одна строка на подбор каждого клиента; без изменений — одной строкой списком</td></tr>
+    <tr><td>08:00, следом</td><td>Тема клиента, если есть изменения</td><td>По подборам: 🆕 💰 ⚰️ 🔥 с цифрами и кнопкой «Показать новые»</td></tr>
+    <tr><td>Сразу при прогоне</td><td>Тема клиента</td><td>⚠️ Одобренный объект снят — отдельно, потому что PDF мог уйти клиенту</td></tr>
+    <tr><td>Сразу</td><td>General</td><td>⚠️ Источник недоступен, когда повтор</td></tr>
+    <tr><td>После «Запустить» / нового подбора</td><td>Тема клиента</td><td>Сводка первого сбора и вывод по рынку</td></tr>
+    <tr><td>После одобрения с ценой</td><td>Тема клиента</td><td>PDF файлом + ссылка</td></tr>
+    <tr><td>После одобрения, если есть дубль</td><td>Тема клиента</td><td>🔎 Кто ещё продаёт эту квартиру: цены, агенты, личные номера — сразу под PDF</td></tr>
+    <tr><td>За 7 и за 2 дня до сделки</td><td>Тема клиента</td><td>📅 Сколько одобрено, презентаций, что не запрошено</td></tr>
+    <tr><td>22:00 – 08:00</td><td>—</td><td>Тишина</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <div class="sechead"><div class="num">07</div><div><h2>Где всё лежит</h2><p class="sub">Клиент → подбор → объект. Одна книга на человека, лист на каждый подбор, одна Панель на всех.</p></div></div>
+  <div class="grid2" style="align-items:start">
+    <div>
+      <h3 style="margin-bottom:10px">Книга Ивановой — вкладки</h3>
+      <div class="sheetbar"><span class="on">Сводка</span><span class="gold">Marina Shores 2BR</span><span class="blue">Off-plan Business Bay</span><span>Дистресс</span><span>Лог</span><span class="grey">✕ JVC 3BR</span></div>
+      <p style="font-size:14px; color:var(--ink-2); margin-top:12px">«Сводка» — первая: все подборы клиента, статус, объектов, одобрено, последний прогон. Лист на подбор — со своей шапкой под рынок; правила те же: новые сверху, твои колонки неприкосновенны. Закрытый подбор — серый лист в конце, ничего не удалено. <span class="mono" style="font-size:12px">(✕ JVC 3BR здесь для примера — это лист Кима.)</span></p>
+      <h3 style="margin:22px 0 10px">Панель — одна на всех</h3>
+      <div class="tablewrap"><table style="font-size:13px">
+        <tr><th>Клиент</th><th>Подбор</th><th>Рынок</th><th>Статус</th><th>Объектов</th><th>✅</th><th>Сделка</th></tr>
+        <tr><td>Ким</td><td>Downtown 1BR</td><td>🏠</td><td>active</td><td>214</td><td>0</td><td>01.10</td></tr>
+        <tr><td>Иванова</td><td>Marina Shores 2BR</td><td>🏠</td><td>active</td><td>94</td><td>5</td><td>15.10</td></tr>
+        <tr><td>Иванова</td><td>Off-plan Business Bay</td><td>🏗</td><td>active</td><td>37</td><td>1</td><td>15.10</td></tr>
+        <tr><td>Гареев</td><td>Palm Villas</td><td>🌴</td><td>active</td><td>41</td><td>2</td><td>—</td></tr>
+        <tr><td>Гареев</td><td>Jumeirah Islands</td><td>🌴</td><td>active</td><td>19</td><td>0</td><td>—</td></tr>
+        <tr><td>Ахметов</td><td>Creek Harbour 2BR</td><td>🏗</td><td>paused</td><td>52</td><td>0</td><td>—</td></tr>
+        <tr><td style="color:var(--ink-3)">Ким</td><td style="color:var(--ink-3)">✕ JVC 3BR</td><td>🏠</td><td>replaced</td><td>58</td><td>0</td><td>—</td></tr>
+        <tr><td style="color:var(--ink-3)">Петрова</td><td style="color:var(--ink-3)">✓ Marina Gate 1BR</td><td>🏠</td><td>bought</td><td>73</td><td>3</td><td>02.09</td></tr>
+      </table></div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:10px">На сервере</h3>
+      <div class="tree"><b>/data/clients/ivanova/</b>
+  client.json          <s>человек: книга, папка, тема, дата сделки</s>
+  brief.md
+  <b>searches/</b>
+    <i>marina-shores-2br/</i>   search.json · state.json · raw/ · approved/
+    <i>offplan-business-bay/</i> search.json · state.json
+<b>/data/clients/kim/</b>
+  <b>searches/</b>
+    <s>jvc-3br/</s>              status: closed · replaced
+    <i>downtown-1br/</i>
+<b>/data/pf_projects/</b>       каталог проектов — общий
+<b>/data/panel.json</b></div>
+      <div class="key crit" data-label="одно правило держит всё">
+        <p><b>Подбор не редактируется — он закрывается и открывается новый.</b> Состояние сверки привязано к источнику и фильтру; одобренные строки с PDF иначе остались бы сиротами; и через месяц ты не вспомнишь, что этому человеку уже показывали. Поэтому у смены запроса всегда две кнопки и никогда — тихая правка.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sechead"><div class="num">08</div><div><h2>Что нужно, чтобы это ожило</h2></div></div>
+  <ul class="check">
+    <li class="done"><b>HANDOFF.md ред. 2 + архив</b><span>Один агент Scout Dubai, модель клиент → подбор → объект, темы, Панель, 17 инструментов, вопросы фабрике.</span></li>
+    <li><b>Группа «Scout Dubai» с темами</b><span>Создаёшь супергруппу, включаешь «Темы» в настройках, добавляешь бота администратором с правом управлять темами. Фабрике нужен id группы — бот его сам увидит при первом сообщении.</span></li>
+    <li><b>Токен бота от @BotFather</b><span>Имя «Scout Dubai». Токен — фабрике, не в чат мне и не в файлы проекта.</span></li>
+    <li><b>Твой Telegram ID</b><span>Число, не @username — узнать у @userinfobot.</span></li>
+    <li><b>VPS</b><span>Ubuntu 24.04, 2 vCPU / 4 ГБ, Docker, в ЕС. Могу подобрать и настроить; фабрике — адрес и SSH-ключ.</span></li>
+    <li><b>Папка «Подборки» на Общем диске</b><span>Без неё сервисный аккаунт не создаст книгу без тебя — нулевая квота. Одна папка, роль «Менеджер контента» для <code>claude-sheets@…</code>.</span></li>
+    <li><b>Ключ сервисного аккаунта — фабрике</b><span>Тот же JSON из <code>secrets/</code>, в контейнер как секрет.</span></li>
+  </ul>
+  <div class="key" data-label="главный вопрос к фабрике">
+    <p><b>Умеет ли её обвязка работать в группе с темами</b> — принимать <code>message_thread_id</code>, писать в нужную тему, создавать и закрывать темы? Если нет — всё то же в личном чате, с тегом «Клиент · Подбор» первой строкой в каждом сообщении и вопросом «о ком?» при каждой неоднозначности. Работает, но хуже. Это §10 HANDOFF.</p>
+  </div>
+</section>
+
+</div>
+<footer><div class="wrap">Scout Dubai · этап 4 · ред. 2 · 12.09.2026 · один агент, дубли и карта DLD, темы на клиентов · пакет для фабрики: HANDOFF.md, handoff.zip</div></footer>
