@@ -6,3 +6,11 @@ python-dotenv>=1.0
 aiogram>=3.30
 langgraph-checkpoint-mongodb>=0.4
 pymongo>=4.9
+
+# Инструменты Scout Dubai: Google Sheets/Drive, PDF-презентации, фото.
+google-api-python-client>=2.140
+google-auth>=2.34
+google-auth-httplib2>=0.2
+fpdf2>=2.8
+Pillow>=10
+numpy>=2

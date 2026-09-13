@@ -1,0 +1,388 @@
+<title>Запросы брокерам</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #eef2f4;
+    --surface: #ffffff;
+    --ink: #16202b;
+    --muted: #5c6b78;
+    --hairline: #d9e1e6;
+    --accent: #1f6f8b;
+    --send: #17914a;
+    --send-ink: #ffffff;
+    --warn: #a84a18;
+    --warn-bg: #fbeee6;
+    --done: #3f7f5c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0f161e;
+      --surface: #19222d;
+      --ink: #e4ebf1;
+      --muted: #8b9aa8;
+      --hairline: #2a3644;
+      --accent: #5aaec7;
+      --send: #1a9d51;
+      --send-ink: #04140a;
+      --warn: #e0a075;
+      --warn-bg: #2e2118;
+      --done: #74b393;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0f161e;
+    --surface: #19222d;
+    --ink: #e4ebf1;
+    --muted: #8b9aa8;
+    --hairline: #2a3644;
+    --accent: #5aaec7;
+    --send: #1a9d51;
+    --send-ink: #04140a;
+    --warn: #e0a075;
+    --warn-bg: #2e2118;
+    --done: #74b393;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 20px 16px 64px; }
+
+  header { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+  h1 {
+    font-family: "Golos Text", "IBM Plex Sans", sans-serif;
+    font-weight: 700; font-size: 25px; line-height: 1.15;
+    letter-spacing: -0.015em; margin: 0; text-wrap: balance;
+  }
+  .lede { color: var(--muted); font-size: 14px; margin: 0; max-width: 46ch; }
+
+  .progress { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+  .counter {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted);
+  }
+  .counter b { color: var(--ink); font-weight: 500; }
+  .track { height: 3px; background: var(--hairline); border-radius: 2px; overflow: hidden; }
+  .bar { height: 100%; width: 0; background: var(--done); transition: width .35s ease; }
+
+  .note {
+    font-size: 12.5px; color: var(--muted); border-left: 2px solid var(--accent);
+    padding: 2px 0 2px 11px; margin: 0;
+  }
+
+  ol {
+    list-style: none; margin: 20px 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 1px; background: var(--hairline);
+  }
+  li {
+    background: var(--surface); padding: 15px 16px 16px;
+    display: flex; flex-direction: column; gap: 11px;
+  }
+  li.done { border-left: 3px solid var(--done); padding-left: 13px; }
+  li.done .head, li.done .meta, li.done .refline { opacity: .5; }
+
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .price {
+    font-family: "Golos Text", sans-serif; font-weight: 600; font-size: 19px;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.01em; white-space: nowrap;
+  }
+  .delta {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px;
+    color: var(--muted); white-space: nowrap;
+  }
+  .delta.below { color: var(--done); }
+
+  .title { font-size: 14.5px; font-weight: 500; margin: 0; }
+  .meta { font-size: 13px; color: var(--muted); margin: 0; }
+  .ru { color: var(--accent); font-weight: 600; }
+
+  .refline {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center;
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted);
+  }
+  .refline a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+
+  .send {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    background: var(--send); color: var(--send-ink); text-decoration: none;
+    font-family: "Golos Text", sans-serif; font-weight: 600; font-size: 15px;
+    padding: 13px; border-radius: 9px; border: none; cursor: pointer;
+    width: 100%; transition: filter .15s ease;
+  }
+  .send:hover { filter: brightness(1.07); }
+  .send:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  li.done .send { background: transparent; color: var(--done); border: 1px solid var(--hairline); }
+  .send svg { width: 17px; height: 17px; flex: none; }
+
+  .stamp { color: var(--done); }
+
+  .problem {
+    background: var(--warn-bg); color: var(--warn); font-size: 12.5px;
+    padding: 9px 11px; border-radius: 7px; margin: 0;
+  }
+
+  details { font-size: 12.5px; color: var(--muted); }
+  summary { cursor: pointer; user-select: none; }
+  summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  pre {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; line-height: 1.55;
+    white-space: pre-wrap; word-break: break-word; background: var(--ground);
+    padding: 10px 11px; border-radius: 7px; margin: 9px 0 0; color: var(--muted);
+    max-height: 210px; overflow-y: auto;
+  }
+
+  footer {
+    margin-top: 26px; display: flex; justify-content: space-between;
+    align-items: center; gap: 14px;
+  }
+  .reset {
+    background: none; border: none; color: var(--muted); font-family: inherit;
+    font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px;
+    cursor: pointer; padding: 4px 0;
+  }
+  .reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .built { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Запросы брокерам</h1>
+    <p class="lede">Нажмите кнопку — откроется WhatsApp с готовым текстом Property Finder. Остаётся отправить и вернуться сюда.</p>
+    <div class="progress">
+      <span class="counter">отправлено <b id="sent">0</b> из <b id="total">0</b></span>
+      <div class="track"><div class="bar" id="bar"></div></div>
+    </div>
+    <p class="note">Текст менять нельзя: Property Finder не передаст изменённый запрос агенту. Свои вопросы — уже в ответной переписке.</p>
+  </header>
+
+  <ol id="list"></ol>
+
+  <footer>
+    <button class="reset" id="reset" type="button">Сбросить отметки</button>
+    <span class="built" id="built"></span>
+  </footer>
+</div>
+
+<script id="payload" type="application/json">__DATA__</script>
+<script>
+  (function () {
+    var data = JSON.parse(document.getElementById("payload").textContent);
+    var items = data.items || [];
+    var KEY = "pf-requests-" + (data.batch || "default");
+
+    function loadState() {
+      try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
+      catch (e) { return {}; }
+    }
+    function saveState(next) {
+      try { localStorage.setItem(KEY, JSON.stringify(next)); } catch (e) {}
+    }
+
+    var state = loadState();
+
+    function money(value) {
+      if (!value) return "—";
+      return new Intl.NumberFormat("ru-RU").format(value) + " AED";
+    }
+
+    function clockOf(iso) {
+      var d = new Date(iso);
+      return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) +
+             " " + d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    var WA_PATH = "M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.86 9.86 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.41a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23Zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.78.97-.15.16-.29.18-.53.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.16 0-.43.06-.65.31-.23.24-.86.84-.86 2.05s.88 2.38 1 2.54c.13.17 1.74 2.65 4.21 3.72.59.25 1.05.4 1.4.52.59.19 1.13.16 1.55.1.47-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.1-.22-.16-.47-.29Z";
+
+    function waIcon() {
+      var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 24 24");
+      svg.setAttribute("fill", "currentColor");
+      svg.setAttribute("aria-hidden", "true");
+      var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", WA_PATH);
+      svg.appendChild(path);
+      return svg;
+    }
+
+    function render() {
+      var list = document.getElementById("list");
+      list.textContent = "";
+
+      items.forEach(function (item) {
+        var li = document.createElement("li");
+        var stamp = state[item.id];
+        if (stamp) li.className = "done";
+
+        var head = document.createElement("div");
+        head.className = "head";
+        var price = document.createElement("span");
+        price.className = "price";
+        price.textContent = money(item.price);
+        head.appendChild(price);
+        if (item.delta) {
+          var delta = document.createElement("span");
+          delta.className = "delta" + (item.delta.indexOf("-") === 0 ? " below" : "");
+          delta.textContent = item.delta + " к рынку";
+          head.appendChild(delta);
+        }
+        li.appendChild(head);
+
+        var title = document.createElement("p");
+        title.className = "title";
+        title.textContent = [item.rooms, item.size_m2 ? item.size_m2 + " м²" : "", item.building]
+          .filter(Boolean).join(" · ");
+        li.appendChild(title);
+
+        var meta = document.createElement("p");
+        meta.className = "meta";
+        if (item.ru) {
+          var flag = document.createElement("span");
+          flag.className = "ru";
+          flag.textContent = "RU ";
+          meta.appendChild(flag);
+        }
+        meta.appendChild(document.createTextNode(
+          [item.agent, item.agency].filter(Boolean).join(" — ") || "агентство не указано"));
+        li.appendChild(meta);
+
+        var ref = document.createElement("div");
+        ref.className = "refline";
+        if (item.reference) {
+          var code = document.createElement("span");
+          code.textContent = item.reference;
+          ref.appendChild(code);
+        }
+        if (item.url) {
+          var link = document.createElement("a");
+          link.href = item.url;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.textContent = "объявление";
+          ref.appendChild(link);
+        }
+        if (stamp) {
+          var sent = document.createElement("span");
+          sent.className = "stamp";
+          sent.textContent = "отправлено " + clockOf(stamp);
+          ref.appendChild(sent);
+        }
+        li.appendChild(ref);
+
+        if (item.problem) {
+          var problem = document.createElement("p");
+          problem.className = "problem";
+          problem.textContent = item.problem;
+          li.appendChild(problem);
+        }
+
+        // Прямой канал: мобильный агентства из объявления, наш текст.
+        // Шлюз PF принимает только ссылки с attempt_id, выданные их сайтом;
+        // прямая кнопка от этого не зависит.
+        if (item.direct_link) {
+          var direct = document.createElement("a");
+          direct.className = "send";
+          direct.href = item.direct_link;
+          direct.target = "_blank";
+          direct.rel = "noopener";
+          if (stamp) {
+            direct.textContent = "Написать ещё раз";
+          } else {
+            direct.appendChild(waIcon());
+            var dl = document.createElement("span");
+            dl.textContent = "Написать агентству напрямую";
+            direct.appendChild(dl);
+          }
+          direct.addEventListener("click", function () {
+            state[item.id] = new Date().toISOString();
+            saveState(state);
+            setTimeout(render, 400);
+          });
+          li.appendChild(direct);
+          var hint = document.createElement("p");
+          hint.className = "meta";
+          hint.textContent = (item.phone_source === "DLD, личный" ? "личный номер агента из реестра DLD " : "мобильный агентства ") + item.phone + " — свой текст, без шлюза PF";
+          li.appendChild(hint);
+        }
+
+        var pfAuthentic = item.wa_link && item.wa_link.indexOf("attempt_id") !== -1;
+        if (pfAuthentic) {
+          var btn = document.createElement("a");
+          btn.className = "send";
+          if (item.direct_link) btn.style.background = "var(--accent)";
+          btn.href = item.wa_link;
+          btn.target = "_blank";
+          btn.rel = "noopener";
+          if (stamp) {
+            btn.textContent = "Через Property Finder ещё раз";
+          } else {
+            btn.appendChild(waIcon());
+            var label = document.createElement("span");
+            label.textContent = item.direct_link ? "Через Property Finder" : "Написать в WhatsApp";
+            btn.appendChild(label);
+          }
+          btn.addEventListener("click", function () {
+            state[item.id] = new Date().toISOString();
+            saveState(state);
+            setTimeout(render, 400);
+          });
+          li.appendChild(btn);
+        } else if (!item.direct_link && item.url) {
+          // Ни прямого номера, ни подлинной ссылки PF — остаётся кнопка на сайте PF
+          var open = document.createElement("a");
+          open.className = "send";
+          open.style.background = "var(--accent)";
+          open.href = item.url;
+          open.target = "_blank";
+          open.rel = "noopener";
+          open.textContent = "Открыть на PF и нажать WhatsApp там";
+          li.appendChild(open);
+          var why = document.createElement("p");
+          why.className = "problem";
+          why.textContent = "У агентства только офисный телефон. Запрос через PF проходит лишь с их кнопки на сайте, залогиненным.";
+          li.appendChild(why);
+        }
+
+        if (item.wa_link) {
+
+          if (item.wa_text) {
+            var details = document.createElement("details");
+            var summary = document.createElement("summary");
+            summary.textContent = "текст сообщения";
+            var pre = document.createElement("pre");
+            pre.textContent = item.wa_text;
+            details.appendChild(summary);
+            details.appendChild(pre);
+            li.appendChild(details);
+          }
+        }
+
+        list.appendChild(li);
+      });
+
+      var done = items.filter(function (item) { return state[item.id]; }).length;
+      document.getElementById("sent").textContent = done;
+      document.getElementById("total").textContent = items.length;
+      document.getElementById("bar").style.width =
+        (items.length ? (done / items.length) * 100 : 0) + "%";
+    }
+
+    document.getElementById("reset").addEventListener("click", function () {
+      state = {};
+      saveState(state);
+      render();
+    });
+
+    document.getElementById("built").textContent = data.built || "";
+    render();
+  })();
+</script>

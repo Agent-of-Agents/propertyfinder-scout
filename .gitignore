@@ -3,3 +3,15 @@ __pycache__/
 *.py[cod]
 .env
 .pytest_cache/
+
+# --- секреты и рабочие данные системы подбора (Scout Dubai) ---
+secrets/
+*service-account*.json
+*credentials*.json
+clients/
+data/
+logs/
+*.log
+handoff/
+handoff.zip
+.claude/
