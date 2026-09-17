@@ -46,7 +46,7 @@ from aiogram.utils.chat_action import ChatActionSender
 from agent import build_agent
 from config import AgentConfig
 from memory import build_checkpointer
-from scout import actions, cards, outbox, runner
+from scout import actions, cards, outbox, runner, transcribe
 from scout.cards import Outgoing
 from scout.models import CLOSE_BOUGHT, CLOSE_DROPPED, MARKET_SECONDARY, SEARCH_ACTIVE, SEARCH_PAUSED
 from scout.store import META, STATES, get_store
@@ -300,6 +300,7 @@ async def on_status(message: Message) -> None:
     store = get_store()
     lines = [f"Хранилище: {store.backend} · Google: {'настроен' if actions.google_configured() else 'не настроен'}"
              f" · группа: {GROUP_ID or 'нет'} · прогон {DAILY_RUN_AT} {TZ.key}",
+             f"Голос: {transcribe.available() or 'не настроен'}",
              f"Этот чат: {message.chat.id} ({message.chat.type})"
              + (" — это значение и есть GROUP_ID для .env" if message.chat.type == "supergroup" and GROUP_ID is None else "")]
     for client in await run_blocking(actions.list_clients):
@@ -372,16 +373,21 @@ async def on_text(message: Message) -> None:
     if not is_allowed(message):
         await message.answer(f"Доступ закрыт. Ваш Telegram ID: {message.from_user.id}")
         return
+    await handle_text(message, message.text or "")
+
+
+async def handle_text(message: Message, text: str) -> None:
+    """Текст от Алексея — набранный или расшифрованный из голосового."""
     thread = topic_of(message)
 
     # Ждём от Алексея цену? Тогда это ответ боту, не агенту.
     pending = await run_blocking(actions.pop_pending, f"{message.chat.id}|{thread or 0}")
     if pending and pending.get("kind") == "price":
-        await _handle_price_answer(message, pending)
+        await _handle_price_answer(message, pending, text)
         return
 
     client = await resolve_context(message)
-    prompt = f"{context_prefix(client)}\n{message.text}"
+    prompt = f"{context_prefix(client)}\n{text}"
     config = {"configurable": {"thread_id": dialog_key(message.chat.id, thread)}}
 
     outbox.begin()
@@ -398,8 +404,8 @@ async def on_text(message: Message) -> None:
     await flush_outbox(message.chat.id, thread)
 
 
-async def _handle_price_answer(message: Message, pending: dict) -> None:
-    digits = re.sub(r"[^\d]", "", message.text or "")
+async def _handle_price_answer(message: Message, pending: dict, text: str) -> None:
+    digits = re.sub(r"[^\d]", "", text or "")
     if not digits:
         await run_blocking(actions.set_pending, f"{message.chat.id}|{topic_of(message) or 0}", pending)
         await message.answer("Жду цену числом, например 3 720 000. Или нажми «Отмена» под вопросом.")
@@ -482,10 +488,40 @@ def _match_by_hint(client, hint: str) -> dict | None:
 
 @dp.message(F.voice | F.audio | F.video_note)
 async def on_voice(message: Message) -> None:
+    """Голосовое, аудиофайл или кружок → Whisper → тот же путь, что у текста."""
     if not is_allowed(message):
         return
-    await message.answer("Голос пока не распознаю — продиктуй текстом или нажми в Telegram «→ в текст» "
-                         "и перешли расшифровку.")
+    if not transcribe.available():
+        await message.answer("Голос пока не распознаю: в .env нет OPENAI_API_KEY. Продиктуй текстом "
+                             "или нажми в Telegram «→ в текст» и перешли расшифровку.")
+        return
+    media = message.voice or message.audio or message.video_note
+    if message.voice:
+        suffix = ".oga"
+    elif message.video_note:
+        suffix = ".mp4"
+    else:
+        suffix = Path(getattr(media, "file_name", "") or "a.mp3").suffix or ".mp3"
+    tmp = Path(tempfile.gettempdir()) / f"tg_{media.file_unique_id}{suffix}"
+    async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id,
+                                       message_thread_id=topic_of(message)):
+        try:
+            await message.bot.download(media, destination=tmp)
+            text = await run_blocking(transcribe.transcribe, tmp)
+        except transcribe.TranscribeError as error:
+            await message.answer(f"⚠️ {error}")
+            return
+        except Exception as error:  # noqa: BLE001
+            log.exception("Распознавание")
+            await message.answer(f"⚠️ Голос не распознан: {type(error).__name__}: {str(error)[:200]}")
+            return
+        finally:
+            tmp.unlink(missing_ok=True)
+    if not text:
+        await message.answer("В записи не расслышал слов — повтори, пожалуйста.")
+        return
+    await message.answer(f"🎤 <i>{cards.esc(text)}</i>", parse_mode=ParseMode.HTML)
+    await handle_text(message, text)
 
 
 # ------------------------------------------------------------------ кнопки

@@ -211,3 +211,30 @@ def test_bot_helpers(monkeypatch):
     markup = bot.keyboard(spec)
     assert len(markup.inline_keyboard[0]) == 3
     assert markup.inline_keyboard[0][0].callback_data == "a|ap|x|s|PF-1"
+
+
+# ------------------------------------------------------------------ голос
+
+def test_transcribe_engine_detection(monkeypatch):
+    from scout import transcribe
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("WHISPER_LOCAL_MODEL", raising=False)
+    assert transcribe.available() == ""
+    with pytest.raises(transcribe.TranscribeError):
+        transcribe.transcribe(__import__("pathlib").Path("nope.oga"))
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    assert transcribe.available() == "openai"
+
+
+def test_multipart_body_has_fields_and_file():
+    from scout import transcribe
+
+    body, ctype = transcribe._multipart({"model": "whisper-1", "language": "ru"}, "file", "voice.ogg",
+                                        "audio/ogg", b"OggS\x00data")
+    assert ctype.startswith("multipart/form-data; boundary=")
+    boundary = ctype.split("boundary=")[1].encode()
+    assert body.count(b"--" + boundary) == 4            # два поля + файл + закрывающий
+    assert b'name="model"\r\n\r\nwhisper-1' in body
+    assert b'filename="voice.ogg"' in body and b"OggS\x00data" in body
+    assert body.endswith(b"--" + boundary + b"--\r\n")
