@@ -299,7 +299,9 @@ async def on_status(message: Message) -> None:
         return
     store = get_store()
     lines = [f"Хранилище: {store.backend} · Google: {'настроен' if actions.google_configured() else 'не настроен'}"
-             f" · группа: {GROUP_ID or 'нет'} · прогон {DAILY_RUN_AT} {TZ.key}"]
+             f" · группа: {GROUP_ID or 'нет'} · прогон {DAILY_RUN_AT} {TZ.key}",
+             f"Этот чат: {message.chat.id} ({message.chat.type})"
+             + (" — это значение и есть GROUP_ID для .env" if message.chat.type == "supergroup" and GROUP_ID is None else "")]
     for client in await run_blocking(actions.list_clients):
         for s in await run_blocking(actions.client_searches, client):
             rep = (store.get(STATES, s.key) or {}).get("last_report") or {}
