@@ -78,8 +78,11 @@ class Brochure(FPDF):
         self.set_margins(0, 0, 0)
         self.add_font("display", "", str(FONT_DIR / "Montserrat-Light.ttf"))
         self.add_font("label", "", str(FONT_DIR / "Montserrat-Regular.ttf"))
-        self.add_font("body", "", str(WIN_FONTS / "calibri.ttf"))
-        self.add_font("bodyb", "", str(WIN_FONTS / "calibrib.ttf"))
+        # Calibri есть только на Windows; в контейнере — Montserrat из assets/
+        body = WIN_FONTS / "calibri.ttf"
+        bodyb = WIN_FONTS / "calibrib.ttf"
+        self.add_font("body", "", str(body if body.exists() else FONT_DIR / "Montserrat-Regular.ttf"))
+        self.add_font("bodyb", "", str(bodyb if bodyb.exists() else FONT_DIR / "Montserrat-Medium.ttf"))
 
     def sheet(self) -> None:
         self.add_page()

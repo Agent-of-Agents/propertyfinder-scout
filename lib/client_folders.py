@@ -3,7 +3,7 @@
 Структура, как договорились с Алексеем:
 
     Подборки/
-      Собитова София — Marina Shores/
+      Иванова Мария — Marina Shores/
         1BR/
         2BR/
 
@@ -26,7 +26,7 @@ def bedroom_folder_name(bedrooms: str | int) -> str:
 
 
 def client_folder_name(full_name: str, target: str) -> str:
-    """«Собитова София — Marina Shores»."""
+    """«Иванова Мария — Marina Shores»."""
     return f"{full_name.strip()} — {target.strip()}" if target else full_name.strip()
 
 

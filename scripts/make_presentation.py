@@ -97,7 +97,7 @@ def a1_column(index: int) -> str:
         letters = chr(65 + rem) + letters
     return letters
 
-CLIENT_NAME = "Собитова София"
+CLIENT_NAME = os.environ.get("PODBOR_CLIENT_NAME", "")
 CLIENT_TARGET = "Marina Shores"
 
 HANDOVER = {"marina shores": "Q4 2026"}

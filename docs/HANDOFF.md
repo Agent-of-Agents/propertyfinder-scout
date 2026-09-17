@@ -39,7 +39,7 @@ Google Диске. Этап 4 — та же логика без команды �
 **Интерфейс — Telegram-бот в контейнере?** Да. Но не личный чат, а **закрытая
 группа с темами (forum topics)**: тема на клиента — см. §7. Токен от @BotFather
 и Telegram ID Алексея передадим отдельно. Бот отвечает **только** ID из
-`ALLOWED_TG_IDS` и только в группе `GROUP_ID`, остальным молчит.
+`ALLOWED_USER_IDS` и только в группе `GROUP_ID`, остальным молчит.
 
 **Деплой.** Хост даст Алексей (VPS в ЕС, Ubuntu 24.04, Docker). SSH-ключ и адрес —
 отдельным сообщением, когда сервер будет.
@@ -315,8 +315,6 @@ WhatsApp-ссылка. `download_images(urls, target)` — до 12 фото на
 Фото по приоритету: `photos_custom/` → все фото объявления → рендеры проекта
 из `assets/projects/<проект>/`, только если в объявлении меньше 8. Планировка —
 только размеченная; догадка детектора в PDF не попадает без подтверждения.
-Шрифты Montserrat в архиве; **Calibri из `C:/Windows/Fonts` в контейнере нет** —
-заменить на любой sans в `lib/pdf_brochure.py:81-82`.
 PDF по проекту offplan — позже, отдельной задачей.
 
 ### 5.14 `attach_plan(client, hint, image, as_photo=False) → {pdf_path, drive_link}` **[S]**
@@ -460,7 +458,7 @@ email агента**, номер и срок разрешения, лиценз�
 ### 7.1 Устройство
 Одна закрытая супергруппа «Scout Dubai» с включёнными темами (forum). Участники:
 Алексей и бот (бот — администратор с правом управлять темами). Бот проверяет
-`chat.id == GROUP_ID` и `from.id ∈ ALLOWED_TG_IDS`, иначе молчит.
+`chat.id == GROUP_ID` и `from.id ∈ ALLOWED_USER_IDS`, иначе молчит.
 
 - **General** — общая тема: утренняя сводка по всем клиентам, новые брифы,
   `/clients`, `/panel`, отказы источников.
@@ -544,22 +542,31 @@ email агента**, номер и срок разрешения, лиценз�
 
 ## 9. Окружение контейнера
 
+Стандарт фабрики (уже в `.env` на сервере): `ANTHROPIC_API_KEY`, `AGENT_MODEL`,
+`TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_IDS`, `MONGODB_URI`, `MONGODB_DB`.
+
+Добавить для Scout Dubai:
+
 ```
-AGENT_NAME=Scout Dubai
-TELEGRAM_BOT_TOKEN=            от @BotFather
-GROUP_ID=                      id супергруппы с темами (отрицательное число, -100…)
-ALLOWED_TG_IDS=                Telegram ID Алексея (через запятую, если несколько)
-GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/google-sa.json
+GROUP_ID=                      id супергруппы с темами (отрицательное, -100…); пусто — личный чат
+GOOGLE_SERVICE_ACCOUNT_JSON=   JSON ключа сервисного аккаунта одной строкой (файлов у контейнера нет)
 DRIVE_FOLDER_ID=               папка «Подборки» на Общем диске
 TZ=Asia/Dubai
 DAILY_RUN_AT=08:00
 QUIET_HOURS=22:00-08:00
 ```
 
-Python 3.12+, зависимости — `requirements.txt` (в архиве дополнен `fpdf2`,
-`Pillow`, `numpy`). Том `/data`. Исходящие: `propertyfinder.ae`,
-`distressonly.deals`, `docs.google.com`, `t.me`, `*.googleapis.com`,
-`api.telegram.org`.
+Состояние — карточки клиентов, подборы, сверка, привязка кнопок, кэш каталога
+проектов — живёт в MongoDB (`scout_*` коллекции в базе агента): у контейнера
+нет тома, пересборка стирает файлы. Без `MONGODB_URI` хранилище падает на файлы
+в `DATA_DIR` — годится для локального запуска и тестов, не для сервера.
+
+Python 3.13, зависимости — `requirements.txt`. Исходящие: `propertyfinder.ae`,
+`distressonly.deals`, `docs.google.com`, `t.me`, `*.googleapis.com`, `api.telegram.org`.
+
+Реализация в репозитории: `scout/` (store, models, books, cards, actions, runner),
+`tools/scout_*.py`, `bot.py`. Стандарт фабрики (deploy, Dockerfile, compose,
+`agent.py:build_agent`, реестр `TOOLS`) не тронут.
 
 ---
 

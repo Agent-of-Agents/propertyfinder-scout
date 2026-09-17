@@ -82,8 +82,11 @@ class Deck(FPDF):
 
         self.add_font("mont", "", str(FONT_DIR / "Montserrat-Light.ttf"))
         self.add_font("montm", "", str(FONT_DIR / "Montserrat-Regular.ttf"))
-        self.add_font("body", "", str(WIN_FONTS / "calibri.ttf"))
-        self.add_font("bodyb", "", str(WIN_FONTS / "calibrib.ttf"))
+        # Calibri есть только на Windows; в контейнере — Montserrat из assets/
+        body = WIN_FONTS / "calibri.ttf"
+        bodyb = WIN_FONTS / "calibrib.ttf"
+        self.add_font("body", "", str(body if body.exists() else FONT_DIR / "Montserrat-Regular.ttf"))
+        self.add_font("bodyb", "", str(bodyb if bodyb.exists() else FONT_DIR / "Montserrat-Medium.ttf"))
 
     # ------------------------------------------------------------ примитивы
 

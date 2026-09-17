@@ -14,3 +14,6 @@ google-auth-httplib2>=0.2
 fpdf2>=2.8
 Pillow>=10
 numpy>=2
+
+# Часовой пояс Asia/Dubai для планировщика — в slim-образе системной базы зон может не быть.
+tzdata

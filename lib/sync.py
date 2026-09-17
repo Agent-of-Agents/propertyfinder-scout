@@ -40,13 +40,19 @@ NEW_HIGHLIGHT_DAYS = 3
 
 # ------------------------------------------------------------------ состояние
 
-def load_state(path: Path) -> dict:
+def load_state(path) -> dict:
+    """Состояние сверки: файл (локально) или объект с load()/save() (MongoDB в контейнере)."""
+    if hasattr(path, "load"):
+        return path.load() or {"listings": {}}
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
     return {"listings": {}}
 
 
-def save_state(path: Path, state: dict) -> None:
+def save_state(path, state: dict) -> None:
+    if hasattr(path, "save"):
+        path.save(state)
+        return
     path.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
