@@ -1,0 +1,317 @@
+<title>Приёмка Scout Dubai</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600&family=Golos+Text:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0A0B; --surface:#121214; --surface-2:#1A1A1D; --sunk:#0E0E10;
+  --ink:#ECECEE; --ink-2:#9C9CA4; --ink-3:#6E6E77; --rule:#232327; --rule-2:#323238;
+  --gold:#C9A55C; --gold-soft:#C9A55C14; --gold-line:#C9A55C4D;
+  --green:#6FBF8A; --green-soft:#6FBF8A1A; --green-line:#6FBF8A66;
+  --coral:#E0654A; --coral-soft:#E0654A1A; --coral-line:#E0654A66;
+  --blue:#6C9BD1; --blue-soft:#6C9BD112;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg); color:var(--ink); font-family:"Golos Text","Segoe UI",system-ui,sans-serif; font-size:16px; line-height:1.5; margin:0; -webkit-font-smoothing:antialiased; padding-bottom:90px}
+h1,h2{font-family:Literata,Georgia,serif; font-weight:600; margin:0; line-height:1.2; text-wrap:balance}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+code{color:var(--gold); background:var(--gold-soft); padding:1px 5px; border-radius:4px; font-size:.9em}
+.wrap{max-width:720px; margin:0 auto; padding:0 16px}
+header{position:sticky; top:0; z-index:10; background:#0A0A0BEE; backdrop-filter:blur(12px); border-bottom:1px solid var(--rule)}
+.hd{padding:14px 0 12px}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); margin-bottom:6px}
+h1{font-size:22px; letter-spacing:-.015em}
+.bar{height:6px; background:var(--surface-2); border-radius:3px; overflow:hidden; margin-top:10px; display:flex}
+.bar i{display:block; height:100%; transition:width .25s}
+.bar .ok{background:var(--green)} .bar .fail{background:var(--coral)} .bar .skip{background:var(--ink-3)}
+.stats{display:flex; gap:14px; font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-2); margin-top:6px}
+.stats b{color:var(--ink); font-weight:500}
+.sync{margin-left:auto; color:var(--ink-3)}
+.intro{padding:18px 0 6px; color:var(--ink-2); font-size:14.5px}
+.intro p{margin:0 0 8px}
+section{padding:22px 0 6px}
+.sh{display:flex; align-items:baseline; gap:12px; margin-bottom:10px}
+.num{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--gold); flex:0 0 auto}
+h2{font-size:18px; letter-spacing:-.01em; flex:1}
+.sec-count{font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-3)}
+.sub{color:var(--ink-2); font-size:14px; margin:-4px 0 12px}
+.item{background:var(--surface); border:1px solid var(--rule); border-radius:12px; margin-bottom:10px; overflow:hidden}
+.item.ok{border-color:var(--green-line)} .item.fail{border-color:var(--coral-line)} .item.skip{opacity:.6}
+.row{display:grid; grid-template-columns:44px 1fr; gap:0}
+.box{display:flex; align-items:flex-start; justify-content:center; padding:14px 0 0 10px; cursor:pointer; -webkit-tap-highlight-color:transparent}
+.box span{width:26px; height:26px; border-radius:8px; border:1.5px solid var(--rule-2); background:var(--sunk); display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent; transition:all .15s}
+.item.ok .box span{background:var(--green-soft); border-color:var(--green); color:var(--green)}
+.item.fail .box span{background:var(--coral-soft); border-color:var(--coral); color:var(--coral)}
+.item.skip .box span{border-color:var(--ink-3); color:var(--ink-3)}
+.body{padding:12px 14px 12px 6px; min-width:0}
+.do{font-weight:500; font-size:15px}
+.do .who{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--blue); margin-right:6px}
+.exp{color:var(--ink-2); font-size:14px; margin-top:5px}
+.exp b{color:var(--ink); font-weight:500}
+.chk{color:var(--ink-3); font-size:13.5px; margin-top:5px; padding-left:10px; border-left:2px solid var(--rule-2)}
+.say{display:flex; gap:8px; align-items:flex-start; margin-top:8px; background:var(--sunk); border:1px dashed var(--rule-2); border-radius:8px; padding:8px 10px; font-size:14px; color:var(--ink)}
+.say .txt{flex:1; font-style:italic}
+.copy{flex:0 0 auto; background:var(--surface-2); border:1px solid var(--rule-2); color:var(--ink-2); border-radius:6px; padding:5px 9px; font-size:12px; cursor:pointer; font-family:inherit}
+.copy:active{background:var(--gold-soft); color:var(--gold)}
+.acts{display:flex; gap:6px; margin-top:10px}
+.acts button{flex:1; border-radius:8px; border:1px solid var(--rule-2); background:var(--surface-2); color:var(--ink-2); padding:9px 4px; font-size:13px; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent}
+.acts button.on-ok{background:var(--green-soft); border-color:var(--green); color:var(--green)}
+.acts button.on-fail{background:var(--coral-soft); border-color:var(--coral); color:var(--coral)}
+.acts button.on-skip{border-color:var(--ink-3); color:var(--ink)}
+.note{display:none; margin-top:8px}
+.item.fail .note{display:block}
+.note textarea{width:100%; min-height:64px; background:var(--sunk); border:1px solid var(--coral-line); border-radius:8px; color:var(--ink); padding:8px 10px; font:inherit; font-size:14px; resize:vertical}
+.note textarea::placeholder{color:var(--ink-3)}
+.report{background:var(--surface); border:1px solid var(--gold-line); border-radius:12px; padding:16px}
+.report h2{font-size:17px; margin-bottom:8px}
+.report pre{white-space:pre-wrap; font-size:12.5px; color:var(--ink-2); background:var(--sunk); border-radius:8px; padding:10px; max-height:280px; overflow:auto; margin:8px 0}
+.foot{position:fixed; bottom:0; left:0; right:0; background:#0A0A0BF2; border-top:1px solid var(--rule); backdrop-filter:blur(12px); z-index:10}
+.foot .wrap{display:flex; gap:8px; padding:10px 16px}
+.foot button{flex:1; border-radius:10px; border:1px solid var(--gold-line); background:var(--gold-soft); color:var(--gold); padding:12px; font-size:14px; font-weight:500; cursor:pointer; font-family:inherit}
+.foot button.ghost{flex:0 0 auto; background:var(--surface-2); border-color:var(--rule-2); color:var(--ink-2)}
+.toast{position:fixed; left:50%; bottom:86px; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:20}
+.toast.show{opacity:1}
+.tail{color:var(--ink-3); font-size:13px; padding:20px 0 10px; font-family:"IBM Plex Mono",monospace}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+
+<header><div class="wrap"><div class="hd">
+  <div class="eyebrow">Scout Dubai · приёмка · тестовый клиент</div>
+  <h1>Чек-лист агента</h1>
+  <div class="bar"><i class="ok" id="bar-ok" style="width:0"></i><i class="fail" id="bar-fail" style="width:0"></i><i class="skip" id="bar-skip" style="width:0"></i></div>
+  <div class="stats"><span>✓ <b id="n-ok">0</b></span><span>✗ <b id="n-fail">0</b></span><span>– <b id="n-skip">0</b></span><span>из <b id="n-all">0</b></span><span class="sync" id="sync">…</span></div>
+</div></div></header>
+
+<div class="wrap">
+<div class="intro">
+  <p>Тап по квадрату — <b>прошло</b>. Кнопки ниже — «не прошло» (появится поле: что ответил бот) и «пропустить». Тексты для отправки боту копируются кнопкой. В конце — «Отчёт»: скопируй и пришли мне в чат.</p>
+  <p>Клиент вымышленный — <b>Тестов Тест</b>, объекты настоящие: башня Marina Shores на Property Finder. В конце тем же ботом клиента убираем в архив.</p>
+</div>
+
+<div id="sections"></div>
+
+<section id="report-sec">
+  <div class="sh"><div class="num">→</div><h2>Отчёт</h2></div>
+  <div class="report">
+    <h2>Что не прошло</h2>
+    <pre id="report">Пока ничего не отмечено.</pre>
+    <div class="acts"><button id="copy-report">Скопировать отчёт</button><button id="reset" class="on-skip">Сбросить всё</button></div>
+  </div>
+  <div class="tail">Scout Dubai · @scaut_dubai_moscow_bot · docs/scout-dubai-checklist.html</div>
+</section>
+</div>
+
+<div class="foot"><div class="wrap">
+  <button id="jump">Продолжить с первого незакрытого</button>
+  <button class="ghost" id="top">↑</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ---- данные чек-листа. do — что делает Алексей; exp — что должен сделать бот; chk — что проверить руками; say — текст для отправки
+const SECTIONS = [
+ {n:"0", title:"Перед стартом", sub:"Бот в группе администратором с правом «Управление темами».", items:[
+  {id:"0a", who:"General", do:"Отправь /status", exp:"Ответ содержит <b>Google: настроен</b> · <b>группа: -1003673973621</b> · <b>Голос: openai</b>", say:"/status"},
+  {id:"0b", who:"General", do:"Отправь /clients", exp:"«Клиентов пока нет» или список без тестового", say:"/clients"},
+ ]},
+ {n:"1", title:"Новый клиент — голосом", sub:"Бриф надиктовывается в General. Ничего не создаётся до кнопки «Запустить».", items:[
+  {id:"1a", who:"General · голос", do:"Надиктуй бриф голосовым", exp:"Сначала 🎤 расшифровка курсивом, затем карточка <b>«Новый клиент — проверь»</b>: имя, 🏠 Вторичка · Marina Shores · 1BR/2BR · 3 000 000–4 500 000 AED, пожелание; кнопки <b>✅ Запустить · ✏️ Поправить</b>", say:"Тестов Тест, вторичка, Marina Shores, одна-две спальни, от трёх до четырёх с половиной миллионов, наличные, сделка через неделю, вид на воду"},
+  {id:"1b", who:"General", do:"Если бот попросил ссылку на PF — отправь её", exp:"Бот проверяет страницу и присылает карточку. Если ссылку не просил — отметь «пропущено»", say:"https://www.propertyfinder.ae/en/buy/dubai/apartments-for-sale-dubai-marina-marina-shores.html"},
+  {id:"1c", who:"General", do:"Нажми ✏️ Поправить, затем напиши правку", exp:"«Напиши, что поправить» → новая карточка уже с <b>4 000 000</b>", say:"бюджет до 4 млн"},
+  {id:"1d", who:"General", do:"Нажми ✅ Запустить", exp:"«Завожу клиента…» → через ~10 с «Завёл Тестов Тест: книга и папка на Диске, тема Тестов Тест →». В группе появилась <b>тема «Тестов Тест»</b>", chk:"Ссылка «тема →» открывает новую тему"},
+  {id:"1e", who:"Тема Тестов", do:"Подожди 1–3 минуты", exp:"Карточка <b>«Собрано · N объектов · N 🇷🇺 · в бюджет N»</b>, медиана 2BR, лучшая цена −N %; кнопки <b>📊 Книга · 🆕 Карточки</b>"},
+  {id:"1f", who:"Google Диск", do:"Открой книгу по кнопке 📊 Книга", exp:"На Общем диске файл <b>«Тестов Тест — подбор»</b>, листы <b>Сводка · Marina Shores 1BR/2BR · Дистресс · Лог</b>", chk:"На листе подбора строки есть, шапка тёмная, колонка A скрыта, в B и C — чекбоксы; в «Сводке» строка подбора; в «Логе» запись"},
+ ]},
+ {n:"2", title:"Карточки и кнопки", items:[
+  {id:"2a", who:"Тема Тестов", do:"Нажми 🆕 Карточки", exp:"Три карточки: фото, тег <code>Тестов · Marina Shores 1BR/2BR · 1 из N</code>, тип · м² · цена, AED/м², % к медиане, 🇷🇺 брокер, ссылка; кнопки <b>✅ Одобрить · 📩 Запросить · ⏭</b>"},
+  {id:"2b", who:"Тема Тестов", do:"Нажми ⏭ под первой карточкой", exp:"Кнопки под ней пропали, пришла <b>следующая</b> карточка"},
+  {id:"2c", who:"Тема Тестов", do:"Напиши «покажи новые»", exp:"Приходят только <b>ещё не показанные</b>; пропущенная и уже показанные не повторяются", say:"покажи новые"},
+ ]},
+ {n:"3", title:"Запрос брокеру", sub:"Отправляет WhatsApp только человек. Если не хочешь беспокоить брокера — открой WhatsApp и закрой, не отправляя.", items:[
+  {id:"3a", who:"Тема Тестов", do:"Нажми 📩 Запросить под карточкой", exp:"«Брокер · Агентство · ref …», кнопки <b>💬 Открыть WhatsApp ↗</b> / <b>✔ Отправил · ✖ Передумал</b>", chk:"В листе у этой строки появилась галочка «📩 Запросить»"},
+  {id:"3b", who:"Телефон", do:"Нажми 💬 Открыть WhatsApp", exp:"Открылся WhatsApp с готовым текстом Property Finder (не редактируется, иначе не дойдёт)"},
+  {id:"3c", who:"Тема Тестов", do:"Нажми ✔ Отправил", exp:"«Записал: <b>Запрошено дд.мм.гггг</b>»", chk:"В листе дата в «Запрошено», галочка 📩 снята"},
+  {id:"3d", who:"Тема Тестов", do:"На другой карточке 📩, затем ✖ Передумал", exp:"«Отменил»", chk:"Галочка 📩 в листе снята"},
+ ]},
+ {n:"4", title:"Одобрение и PDF", sub:"Цена в презентацию — только та, что назовёшь ты.", items:[
+  {id:"4a", who:"Тема Тестов", do:"Нажми ✅ Одобрить под карточкой", exp:"«В объявлении N. <b>Твоя цена для клиента?</b>» с кнопкой ✖ Отмена"},
+  {id:"4b", who:"Тема Тестов", do:"Ответь не числом", exp:"«Жду цену числом, например 3 720 000…»", say:"абв"},
+  {id:"4c", who:"Тема Тестов · голос", do:"Скажи цену голосом (или напиши)", exp:"🎤 расшифровка → «✅ Одобряю · цена 3 720 000 — пишу в лист и собираю…» → через 1–2 мин <b>PDF файлом</b>, подпись «3 720 000 AED ≈ 1 012 934 USD», кнопки <b>📂 Папка · 🔁 Пересобрать</b>", say:"три миллиона семьсот двадцать тысяч", chk:"В листе: ✅, «Моя цена» 3 720 000, в «Презентация» — ссылка"},
+  {id:"4d", who:"PDF", do:"Открой PDF", exp:"Обложка, описание, галереи, заключение с твоей ценой. <b>Ни контактов, ни логотипа PF</b>"},
+  {id:"4e", who:"Google Диск", do:"Нажми 📂 Папка", exp:"Папка «Тестов Тест — Marina Shores / 2BR / 3 720 000 · Агентство · N sqm», внутри PDF"},
+  {id:"4f", who:"Тема Тестов", do:"Нажми 🔁 Пересобрать", exp:"«Пересобираю…» → тот же PDF; файл на Диске обновлён на месте, ссылка в листе не изменилась"},
+ ]},
+ {n:"5", title:"Планировка от брокера", items:[
+  {id:"5a", who:"Тема Тестов", do:"Ответь любой картинкой (reply) на карточку одобренного объекта", exp:"«Планировка приложена…, презентация пересобрана» + новый PDF с листом-планировкой"},
+  {id:"5b", who:"Тема Тестов", do:"Пришли картинку с подписью — названием агентства из любой карточки, без reply", exp:"Бот сам нашёл объект по зацепке: «Планировка приложена к объекту PF-…»", say:"Prop Plus"},
+  {id:"5c", who:"Тема Тестов", do:"Пришли картинку без подписи и без reply", exp:"«К какому объекту это? Ответь этой фотографией на карточку…»"},
+ ]},
+ {n:"6", title:"Вопросы по данным", sub:"Ответ — только из листа. Цифры не выдумываются.", items:[
+  {id:"6a", who:"Тема Тестов", do:"Задай вопрос", exp:"Ответ начинается с тега <code>Тестов · Marina Shores…</code>, список с ценами и брокерами <b>из листа</b>; предложение показать карточки", say:"какие двушки с видом на воду до 4 млн у русскоязычных?"},
+  {id:"6b", who:"Тема Тестов", do:"Попроси карточки", exp:"Две карточки по названным объектам", say:"покажи первые две карточками"},
+  {id:"6c", who:"Тема Тестов", do:"Спроси про один объект по его ID из ответа", exp:"Факты объявления: заголовок, фото, планировки, агент, описание, сделки DLD если есть", say:"расскажи подробнее про PF-"},
+  {id:"6d", who:"General", do:"Спроси про клиента из General", exp:"Обзор подборов с цифрами и ссылкой на книгу", say:"что там у Тестова?"},
+ ]},
+ {n:"7", title:"Смена запроса", sub:"Подбор не редактируется — закрывается и открывается новый. Решение — твоей кнопкой.", items:[
+  {id:"7a", who:"Тема Тестов", do:"Напиши новый запрос", exp:"Карточка <b>«Новый подбор»</b> с кнопками <b>🔁 Заменить Marina Shores… · ➕ Добавить параллельно · ✖ Отмена</b>", say:"трёшки не нужны, теперь однушка в Даунтауне до 2,5 млн"},
+  {id:"7b", who:"Тема Тестов", do:"Нажми ➕ Добавить параллельно", exp:"«Добавляю параллельный подбор, собираю…» → сводка второго сбора", chk:"В книге новый лист «Downtown 1BR», в «Сводке» две строки"},
+  {id:"7c", who:"Тема Тестов", do:"Ещё один запрос, затем 🔁 Заменить Downtown 1BR", exp:"«Закрыл Downtown 1BR: лист переименован в <code>✕ Downtown 1BR</code>…» → новый подбор собран", say:"вместо Даунтауна — студия в JVC до 700 тысяч", chk:"В книге серый лист «✕ Downtown 1BR» в конце, содержимое цело"},
+  {id:"7d", who:"Тема Тестов", do:"При двух активных подборах напиши «покажи новые»", exp:"Бот <b>спрашивает</b>, какой подбор, а не угадывает", say:"покажи новые"},
+ ]},
+ {n:"8", title:"Дневной прогон и дайджест", sub:"То, что бот делает сам в 08:00 по Дубаю, — здесь вызываем руками.", items:[
+  {id:"8a", who:"General", do:"Отправь /run", exp:"«Запускаю прогон…» → через 1–3 мин в теме блок по подборам (🆕 💰 ⚰️ или «Без изменений») с кнопками <b>🆕 Показать новые · 💰 Цены · 📊 Лист</b>; в General сводка «Утро · N активных клиентов» построчно", say:"/run"},
+  {id:"8b", who:"Google Лист", do:"Поставь галочку ✅ и «Моя цена» руками в листе у другого объекта, затем /run", exp:"PDF по нему пришёл в тему сам", say:"/run"},
+  {id:"8c", who:"General", do:"Клиент заведён со «сделкой через неделю» — проверь в ответе /run", exp:"📅 «Тестов: сделка через 7 дней: одобрено N, презентаций N, запрошено N» (напоминание — ровно за 7 и за 2 дня)"},
+  {id:"8d", who:"General", do:"Отправь /panel", exp:"Ссылка на книгу «Панель — Scout Dubai», внутри строки по всем подборам", say:"/panel"},
+ ]},
+ {n:"9", title:"Управление", items:[
+  {id:"9a", who:"Тема Тестов", do:"/pause, затем /clients в General, затем /resume", exp:"«на паузе» → в /clients ⏸ → «снова активен»", say:"/pause"},
+  {id:"9b", who:"General", do:"/status", exp:"По каждому подбору дата последнего прогона и число объектов", say:"/status"},
+  {id:"9c", who:"Тема Тестов", do:"/reset, затем спроси о предыдущем вопросе", exp:"«Контекст диалога очищен» — агент не помнит прошлый вопрос", say:"/reset"},
+ ]},
+ {n:"10", title:"Закрытие — убираем тестового", items:[
+  {id:"10a", who:"Тема Тестов", do:"Отправь /close", exp:"Кнопки по активным подборам <b>✔ Куплено · ✕ Закрыть</b> и ✖ Отмена", say:"/close"},
+  {id:"10b", who:"Тема Тестов", do:"✔ Куплено по последнему активному подбору", exp:"«✓ куплено: … Все подборы закрыты — клиент в архиве, тема закрывается»", chk:"Тема в группе закрыта; в книге лист «✓ …»; /clients показывает Тестова в архиве; в Панели «✓ куплено»"},
+ ]},
+];
+
+const STATES = ["", "ok", "fail", "skip"];
+const KEY = "scout-checklist-v1";
+let state = {items:{}};          // {id: {s: "ok"|"fail"|"skip"|"", note: ""}}
+let db = null, docRef = null, saveTimer = null, applyingRemote = false;
+
+// ---- рендер
+const $ = (s, r=document) => r.querySelector(s);
+function esc(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+function render(){
+  const root = $("#sections"); root.innerHTML = "";
+  for (const sec of SECTIONS){
+    const el = document.createElement("section"); el.id = "sec-"+sec.n;
+    el.innerHTML = `<div class="sh"><div class="num">${sec.n}</div><h2>${sec.title}</h2><span class="sec-count" data-sec="${sec.n}"></span></div>` + (sec.sub ? `<div class="sub">${sec.sub}</div>` : "");
+    for (const it of sec.items){
+      const st = state.items[it.id] || {s:"", note:""};
+      const item = document.createElement("div"); item.className = "item " + st.s; item.id = "it-"+it.id;
+      item.innerHTML = `<div class="row">
+        <div class="box" data-toggle="${it.id}"><span>${st.s==="ok"?"✓":st.s==="fail"?"✗":st.s==="skip"?"–":"✓"}</span></div>
+        <div class="body">
+          <div class="do"><span class="who">${it.who}</span>${it.do}</div>
+          <div class="exp">${it.exp}</div>
+          ${it.chk ? `<div class="chk">${it.chk}</div>` : ""}
+          ${it.say ? `<div class="say"><div class="txt">${esc(it.say)}</div><button class="copy" data-copy="${esc(it.say)}">Скопировать</button></div>` : ""}
+          <div class="acts">
+            <button data-set="${it.id}|ok" class="${st.s==="ok"?"on-ok":""}">✓ прошло</button>
+            <button data-set="${it.id}|fail" class="${st.s==="fail"?"on-fail":""}">✗ не прошло</button>
+            <button data-set="${it.id}|skip" class="${st.s==="skip"?"on-skip":""}">пропустить</button>
+          </div>
+          <div class="note"><textarea data-note="${it.id}" placeholder="Что ответил бот? Скопируй его сообщение сюда.">${esc(st.note||"")}</textarea></div>
+        </div></div>`;
+      el.appendChild(item);
+    }
+    root.appendChild(el);
+  }
+  updateStats();
+}
+function updateStats(){
+  let ok=0, fail=0, skip=0, all=0;
+  for (const sec of SECTIONS){
+    let sOk=0;
+    for (const it of sec.items){ all++; const s=(state.items[it.id]||{}).s; if(s==="ok"){ok++;sOk++;} else if(s==="fail")fail++; else if(s==="skip")skip++; }
+    const c = document.querySelector(`[data-sec="${sec.n}"]`); if (c) c.textContent = `${sOk}/${sec.items.length}`;
+  }
+  $("#n-ok").textContent=ok; $("#n-fail").textContent=fail; $("#n-skip").textContent=skip; $("#n-all").textContent=all;
+  $("#bar-ok").style.width=(ok/all*100)+"%"; $("#bar-fail").style.width=(fail/all*100)+"%"; $("#bar-skip").style.width=(skip/all*100)+"%";
+  $("#report").textContent = report();
+}
+function report(){
+  const lines = [];
+  let ok=0, all=0;
+  for (const sec of SECTIONS) for (const it of sec.items){
+    all++; const st = state.items[it.id]||{};
+    if (st.s==="ok") ok++;
+    if (st.s==="fail") lines.push(`✗ ${sec.n}. ${sec.title} → ${it.do}\n   бот: ${(st.note||"— без комментария").trim()}`);
+    else if (st.s==="skip") lines.push(`– ${sec.n}. пропущено: ${it.do}`);
+  }
+  const head = `Приёмка Scout Dubai · ${new Date().toLocaleString("ru-RU")} · прошло ${ok} из ${all}`;
+  return lines.length ? head + "\n\n" + lines.join("\n") : head + (ok ? "\n\nВсё отмеченное прошло." : "\n\nПока ничего не отмечено.");
+}
+
+// ---- состояние: db артефакта, запасной localStorage
+function setItem(id, s, note){
+  const cur = state.items[id] || {s:"", note:""};
+  state.items[id] = {s: s ?? cur.s, note: note ?? cur.note, at: new Date().toISOString()};
+  persist();
+}
+function persist(){
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+  if (docRef && !applyingRemote){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try { await docRef.set({items: state.items, updated: new Date().toISOString()}); mark("сохранено"); }
+      catch(e){ mark("не сохранилось в облако"); }
+    }, 400);
+  }
+}
+function mark(t){ const s=$("#sync"); s.textContent=t; }
+function applyState(next){
+  applyingRemote = true;
+  state = {items: (next && next.items) || {}};
+  render();
+  applyingRemote = false;
+}
+async function boot(){
+  try { const raw = localStorage.getItem(KEY); if (raw) state = JSON.parse(raw); } catch(e){}
+  render();
+  mark("локально");
+  try {
+    db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+  } catch(e){ db = null; }
+  if (!db){ mark("локально"); return; }
+  docRef = db.doc("checklist/run1");
+  try {
+    const snap = await docRef.get();
+    if (snap.exists){ applyState(snap.data()); mark("облако"); }
+    else if (Object.keys(state.items).length){ await docRef.set({items: state.items, updated: new Date().toISOString()}); mark("облако"); }
+    else mark("облако");
+    docRef.onSnapshot(s => { if (s.exists && !saveTimer) { const d = s.data(); if (JSON.stringify(d.items) !== JSON.stringify(state.items)) applyState(d); } },
+                      () => mark("облако: связь потеряна"));
+  } catch(e){ mark("облако недоступно"); }
+}
+
+// ---- события
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("[data-toggle],[data-set],[data-copy],#copy-report,#reset,#jump,#top");
+  if (!t) return;
+  if (t.dataset.toggle){
+    const id = t.dataset.toggle, cur = (state.items[id]||{}).s || "";
+    setItem(id, cur==="ok" ? "" : "ok"); render(); return;
+  }
+  if (t.dataset.set){
+    const [id, s] = t.dataset.set.split("|"); const cur=(state.items[id]||{}).s;
+    setItem(id, cur===s ? "" : s); render();
+    if (s==="fail") setTimeout(()=>{ const ta=document.querySelector(`[data-note="${id}"]`); if(ta) ta.focus(); }, 50);
+    return;
+  }
+  if (t.dataset.copy !== undefined){ await copy(t.dataset.copy); return; }
+  if (t.id==="copy-report"){ await copy(report()); return; }
+  if (t.id==="reset"){ if (confirm("Сбросить все отметки?")){ state={items:{}}; persist(); render(); } return; }
+  if (t.id==="jump"){
+    for (const sec of SECTIONS) for (const it of sec.items){ if(!(state.items[it.id]||{}).s){ document.getElementById("it-"+it.id).scrollIntoView({behavior:"smooth", block:"center"}); return; } }
+    document.getElementById("report-sec").scrollIntoView({behavior:"smooth"}); return;
+  }
+  if (t.id==="top"){ window.scrollTo({top:0, behavior:"smooth"}); }
+});
+document.addEventListener("input", (e) => {
+  const ta = e.target.closest("[data-note]"); if (!ta) return;
+  setItem(ta.dataset.note, undefined, ta.value); $("#report").textContent = report();
+});
+async function copy(text){
+  try { await navigator.clipboard.writeText(text); toast("Скопировано"); }
+  catch(e){ const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy"); toast("Скопировано");}catch(_){toast("Не удалось скопировать");} ta.remove(); }
+}
+let toastTimer;
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove("show"), 1400); }
+
+boot();
+</script>
