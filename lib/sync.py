@@ -234,22 +234,30 @@ def _fmt_money(value) -> str:
         return str(value)
 
 
-BUDGET_SLACK = 1.05   # показываем и то, что чуть выше потолка — есть о чём торговаться
+BUDGET_SLACK = 1.05        # чуть выше потолка показываем — есть о чём торговаться
+BUDGET_FLOOR_SLACK = 0.90  # и чуть ниже нижней границы — по той же причине
 
 
 def fits_client(client: dict, row: dict) -> bool:
-    """Подходит ли объявление под бриф: тип квартиры и потолок бюджета.
+    """Подходит ли объявление под бриф: тип квартиры и бюджет с обеих сторон.
 
-    Нижней границы нет сознательно: дешевле бюджета — не проблема.
-    Таблица строится под бриф, и сверка должна смотреть теми же глазами,
-    иначе в «новые» приедут все 4BR и 5BR башни.
+    Нижняя граница — не «чем дешевле, тем лучше», а класс объекта: клиент,
+    который ищет виллу за 50–120 млн, не хочет видеть виллы за 8 млн.
+    Урок Таланина 18.09.2026: без нижней границы в «бюджет» попали все виллы острова.
+    Таблица строится под бриф, и сверка должна смотреть теми же глазами.
     """
     bedrooms = [str(b) for b in client.get("bedrooms", [])]
     if bedrooms and str(row.get("bedrooms")) not in bedrooms:
         return False
-    max_price = (client.get("budget") or {}).get("max")
-    if max_price and row.get("price") and row["price"] > max_price * BUDGET_SLACK:
-        return False
+    budget = client.get("budget") or {}
+    price = row.get("price")
+    if price:
+        max_price = budget.get("max")
+        if max_price and price > max_price * BUDGET_SLACK:
+            return False
+        min_price = budget.get("min")
+        if min_price and price < min_price * BUDGET_FLOOR_SLACK:
+            return False
     return True
 
 

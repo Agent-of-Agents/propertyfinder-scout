@@ -238,3 +238,13 @@ def test_multipart_body_has_fields_and_file():
     assert b'name="model"\r\n\r\nwhisper-1' in body
     assert b'filename="voice.ogg"' in body and b"OggS\x00data" in body
     assert body.endswith(b"--" + boundary + b"--\r\n")
+
+
+def test_budget_floor_is_enforced():
+    villa_search = {"bedrooms": ["4", "5", "6"], "budget": {"min": 50_000_000, "max": 120_000_000}}
+    assert not sync.fits_client(villa_search, {"bedrooms": 5, "price": 8_000_000})       # вилла за 8 млн — не тот класс
+    assert sync.fits_client(villa_search, {"bedrooms": 5, "price": 46_000_000})          # −8 % к нижней — ещё показываем
+    assert not sync.fits_client(villa_search, {"bedrooms": 5, "price": 40_000_000})      # −20 % — уже нет
+    assert sync.fits_client(villa_search, {"bedrooms": 6, "price": 125_000_000})         # +4 % к потолку — показываем
+    assert not sync.fits_client(villa_search, {"bedrooms": 6, "price": 130_000_000})
+    assert sync.fits_client({"bedrooms": ["2"], "budget": {"max": 4_500_000}}, {"bedrooms": 2, "price": 1_900_000})  # без min — как раньше
