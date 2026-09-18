@@ -46,7 +46,7 @@ from aiogram.utils.chat_action import ChatActionSender
 from agent import build_agent
 from config import AgentConfig
 from memory import build_checkpointer
-from scout import actions, cards, outbox, runner, transcribe
+from scout import actions, cards, outbox, reminders, runner, transcribe
 from scout.cards import Outgoing
 from scout.models import CLOSE_BOUGHT, CLOSE_DROPPED, MARKET_SECONDARY, SEARCH_ACTIVE, SEARCH_PAUSED
 from scout.store import META, STATES, get_store
@@ -201,6 +201,13 @@ def topic_link(client) -> str:
     return f"https://t.me/c/{internal}/{client.telegram_topic_id}"
 
 
+def by_slug_all(client, s_slug: str) -> str:
+    try:
+        return actions.get_search(client.slug, s_slug).title
+    except actions.NotFound:
+        return s_slug
+
+
 def in_quiet_hours(now: dt.datetime | None = None) -> bool:
     now = now or dt.datetime.now(TZ)
     try:
@@ -246,7 +253,10 @@ async def resolve_context(message: Message):
 
 
 def context_prefix(client) -> str:
-    return "[General]" if client is None else f"[тема: {client.slug} — {client.name}]"
+    now = dt.datetime.now(TZ)
+    stamp = f"сегодня {['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'][now.weekday()]} {now:%Y-%m-%d %H:%M} Дубай"
+    where = "[General]" if client is None else f"[тема: {client.slug} — {client.name}]"
+    return f"{where} [{stamp}]"
 
 
 # ------------------------------------------------------------------ команды
@@ -267,7 +277,8 @@ async def on_start(message: Message) -> None:
         f"Режим: {mode}.\n"
         "Бриф нового клиента — текстом в General. Вопросы по клиенту — в его теме.\n\n"
         "/clients — клиенты и подборы\n/status — последний прогон\n/run — прогон сейчас\n"
-        "/panel — книга «Панель»\n/pause, /resume, /close — в теме клиента\n/reset — начать диалог заново"
+        "/panel — книга «Панель»\n/reminders — напоминания\n/pause, /resume, /close — в теме клиента\n"
+        "/reset — начать диалог заново\n\nНапоминание: «напомни в четверг предложить Гарееву Palm Villas»."
     )
 
 
@@ -296,6 +307,17 @@ async def on_clients(message: Message) -> None:
                          InlineKeyboardButton(text="🗑", callback_data=cards.cb(cards.ACT_DELETE, i["slug"]))])
     await message.answer(spec.text, parse_mode=ParseMode.HTML,
                          reply_markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None)
+
+
+@dp.message(Command("reminders"))
+async def on_reminders(message: Message) -> None:
+    if not is_allowed(message):
+        return
+    client = await resolve_context(message)
+    items = await run_blocking(reminders.pending, client.slug if client else None)
+    names = {c.slug: c.short_name for c in await run_blocking(actions.list_clients)}
+    rows = [(r, names.get(r.get("client"), "общее"), reminders.describe_due(r["due"], TZ)) for r in items]
+    await send(message.chat.id, cards.reminders_list_card(rows), topic_of(message))
 
 
 @dp.message(Command("panel"))
@@ -393,6 +415,8 @@ async def handle_text(message: Message, text: str) -> None:
         return
 
     client = await resolve_context(message)
+    if client is not None:
+        await run_blocking(reminders.touch, client)
     prompt = f"{context_prefix(client)}\n{text}"
     config = {"configurable": {"thread_id": dialog_key(message.chat.id, thread)}}
 
@@ -429,6 +453,7 @@ async def _handle_price_answer(message: Message, pending: dict, text: str) -> No
         await message.answer(f"⚠️ Не вышло: {error}")
         return
     result["listing"] = pending["listing"]
+    await run_blocking(reminders.touch, client)
     await send(message.chat.id, cards.pdf_card(client, search, result), topic_of(message))
 
 
@@ -694,6 +719,7 @@ async def cb_sent(call: CallbackQuery, p: dict, chat_id: int, thread: int | None
     client = await run_blocking(actions.get_client, p["client"])
     search = await run_blocking(actions.get_search, p["client"], p["search"])
     stamp = await run_blocking(actions.mark_sent, client, search, p["listing"])
+    await run_blocking(reminders.touch, client)
     await _clear_buttons(call)
     await call.message.answer(f"Записал: <b>Запрошено {stamp}</b>. Когда брокер пришлёт планировку — "
                               "ответь фотографией на карточку объекта.", parse_mode=ParseMode.HTML)
@@ -709,8 +735,12 @@ async def cb_skip(call: CallbackQuery, p: dict, chat_id: int, thread: int | None
 
 async def cb_show_new(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
     client = await run_blocking(actions.get_client, p["client"])
-    search = await run_blocking(actions.get_search, p["client"], p["search"])
-    await _show_new(client, search, chat_id, thread, count=3)
+    if p["search"]:
+        searches = [await run_blocking(actions.get_search, p["client"], p["search"])]
+    else:
+        searches = await run_blocking(actions.client_searches, client, True)
+    for search in searches:
+        await _show_new(client, search, chat_id, thread, count=3)
 
 
 async def _show_new(client, search, chat_id: int, thread: int | None, count: int) -> None:
@@ -836,6 +866,31 @@ async def cb_clients(call: CallbackQuery, p: dict, chat_id: int, thread: int | N
     await on_clients(call.message)
 
 
+async def cb_reminder(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
+    """✔ Сделано · ⏰ +3 · ⏰ +7 · ✖ — id напоминания лежит в поле client; «fu:<slug>» — автофоллоуап."""
+    rid, act = p["client"], p["action"]
+    await _clear_buttons(call)
+    if rid.startswith("fu:"):                                  # фоллоуап: «напомнить через неделю»
+        client = await run_blocking(actions.get_client, rid[3:])
+        due = dt.datetime.combine(dt.datetime.now(TZ).date() + dt.timedelta(days=7), reminders.MORNING, tzinfo=TZ)
+        rem = await run_blocking(reminders.add, client.slug, due, f"коснуться: {client.name}")
+        await call.message.answer(f"⏰ Напомню {reminders.describe_due(rem['due'], TZ)}: коснуться {client.short_name}.")
+        return
+    if act == cards.ACT_REM_DONE:
+        await run_blocking(reminders.complete, rid)
+        rem = await run_blocking(reminders.get, rid)
+        if rem and rem.get("client"):
+            await run_blocking(reminders.touch, rem["client"])
+        await call.message.answer("✔ Отмечено как сделанное.")
+    elif act in (cards.ACT_REM_SNOOZE3, cards.ACT_REM_SNOOZE7):
+        days = 3 if act == cards.ACT_REM_SNOOZE3 else 7
+        rem = await run_blocking(reminders.snooze, rid, days, TZ)
+        await call.message.answer(f"⏰ Перенёс на {reminders.describe_due(rem['due'], TZ)}.")
+    elif act == cards.ACT_REM_CANCEL:
+        await run_blocking(reminders.cancel, rid)
+        await call.message.answer("✖ Напоминание отменено.")
+
+
 CALLBACKS = {
     cards.ACT_LAUNCH: cb_launch, cards.ACT_EDIT: cb_edit, cards.ACT_REPLACE: cb_replace, cards.ACT_ADD: cb_add,
     cards.ACT_CANCEL: cb_cancel, cards.ACT_APPROVE: cb_approve, cards.ACT_REQUEST: cb_request,
@@ -843,6 +898,8 @@ CALLBACKS = {
     cards.ACT_SHOW_PRICES: cb_show_prices, cards.ACT_REBUILD: cb_rebuild, cards.ACT_CONFIRM: cb_confirm,
     cards.ACT_PAUSE: cb_pause_resume, cards.ACT_RESUME: cb_pause_resume, cards.ACT_CLIENTS: cb_clients,
     cards.ACT_MANAGE: cb_manage, cards.ACT_DELETE: cb_delete, cards.ACT_DELETE_CONFIRM: cb_delete_confirm,
+    cards.ACT_REM_DONE: cb_reminder, cards.ACT_REM_SNOOZE3: cb_reminder, cards.ACT_REM_SNOOZE7: cb_reminder,
+    cards.ACT_REM_CANCEL: cb_reminder,
 }
 
 
@@ -903,6 +960,24 @@ async def daily_job(only: str | None = None, announce_chat: int | None = None) -
             paused.append(client.short_name)
         await _deadline_reminder(client, entry, by_slug, today, home, thread, deadlines)
 
+    # затихшие клиенты — фоллоуап в тему и строка в сводку
+    try:
+        for client, silent in await run_blocking(reminders.quiet_clients, [e["client"] for k, e in result.items() if not k.startswith("_")], today):
+            entry = result[client.slug]
+            news_bits = []
+            for s_slug, rep in entry["searches"].items():
+                if rep.get("new") or rep.get("price"):
+                    news_bits.append(f"{by_slug_all(client, s_slug)}: 🆕 {len(rep.get('new', []))} · 💰 {len(rep.get('price', []))}")
+            searches_line = "; ".join(f"{s.title}: ✅ {st.get('approved', 0)} · 📩 {st.get('requested', 0)}"
+                                      for s_slug, st in (entry.get("stats") or {}).items()
+                                      for s in [await run_blocking(actions.get_search, client.slug, s_slug)])
+            thread = client.telegram_topic_id if GROUP_ID else None
+            await send(home, cards.followup_card(client, silent, "; ".join(news_bits), searches_line), thread)
+            await run_blocking(reminders.mark_followup_sent, client, today)
+            deadlines.append(f"⏳ {client.short_name} молчит {silent} дн.")
+    except Exception as error:  # noqa: BLE001
+        log.warning("Фоллоуапы: %s", error)
+
     await send(home, cards.general_digest(general_rows, paused, deadlines))
     try:
         await run_blocking(actions.panel_update, None, topic_link)
@@ -945,6 +1020,31 @@ async def _deadline_reminder(client, entry, by_slug, today, home, thread, deadli
         await send(home, cards.plain("\n".join(lines)), thread)
 
 
+async def fire_reminders(now: dt.datetime) -> None:
+    """Напоминания, чей срок наступил, — в тему клиента (или General)."""
+    home = GROUP_ID or (next(iter(ALLOWED)) if ALLOWED else None)
+    if home is None:
+        return
+    for rem in await run_blocking(reminders.due_now, now):
+        client = None
+        if rem.get("client"):
+            try:
+                client = await run_blocking(actions.get_client, rem["client"])
+            except actions.NotFound:
+                client = None
+        summary = ""
+        if client:
+            stats = []
+            for s in await run_blocking(actions.client_searches, client, True):
+                st = (get_store().get(STATES, s.key) or {}).get("stats") or {}
+                stats.append(f"{s.title}: ✅ {st.get('approved', 0)} · 📩 {st.get('requested', 0)} · PDF {st.get('pdf', 0)}")
+            summary = "; ".join(stats)
+        thread = client.telegram_topic_id if (client and GROUP_ID) else None
+        # помечаем отправленным до отправки — чтобы сбой Telegram не размножил карточку
+        await run_blocking(get_store().update, reminders.REMINDERS, rem["id"], {"status": "sent"})
+        await send(home, cards.reminder_card(client, rem, summary), thread)
+
+
 async def scheduler() -> None:
     """Раз в полминуты: пора ли делать прогон. Один раз в день, по DAILY_RUN_AT в TZ."""
     store = get_store()
@@ -955,6 +1055,8 @@ async def scheduler() -> None:
             if now.strftime("%H:%M") == DAILY_RUN_AT and marker != now.date().isoformat():
                 store.put(META, "daily", {"date": now.date().isoformat(), "started": now.isoformat()})
                 await daily_job()
+            if not in_quiet_hours(now):
+                await fire_reminders(now)
         except Exception:  # noqa: BLE001
             log.exception("Планировщик")
         await asyncio.sleep(30)

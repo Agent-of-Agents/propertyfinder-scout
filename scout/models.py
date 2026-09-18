@@ -53,6 +53,9 @@ class Client:
     created: str = field(default_factory=today_iso)
     deadline: str = ""            # дата сделки или приезда, ISO
     notes: str = ""
+    last_touch: str = ""          # последнее действие Алексея по клиенту, ISO-дата (scout/reminders.py)
+    followup_days: int = 7        # через сколько дней тишины напомнить коснуться
+    followup_sent: str = ""       # когда последний раз напоминали
 
     def to_doc(self) -> dict:
         return asdict(self)

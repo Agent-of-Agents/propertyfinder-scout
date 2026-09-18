@@ -25,7 +25,8 @@ ACT_SHOW_NEW, ACT_SHOW_PRICES, ACT_SHOW_DISTRESS = "nw", "pr", "ds"
 ACT_CONFIRM, ACT_CLOSE_OBJECT = "ok", "co"
 ACT_PAUSE, ACT_RESUME, ACT_CLIENTS = "ps", "rs", "cl"
 ACT_REBUILD = "rb"
-ACT_DELETE, ACT_DELETE_CONFIRM, ACT_MANAGE = "dl", "dd", "mg"      # удалить полностью: карточка → подтверждение
+ACT_DELETE, ACT_DELETE_CONFIRM, ACT_MANAGE = "dl", "dd", "mg"
+ACT_REM_DONE, ACT_REM_SNOOZE3, ACT_REM_SNOOZE7, ACT_REM_CANCEL = "rd", "r3", "r7", "rx"   # напоминания      # удалить полностью: карточка → подтверждение
 
 
 @dataclass
@@ -397,6 +398,51 @@ def delete_confirm_card(client: Client, searches: list) -> Outgoing:
             "Если клиент просто «на паузе» или «купил» — лучше ⏸ или ✓: история сохранится.")
     return Outgoing(text, [[Button("🗑 Да, удалить", cb(ACT_DELETE_CONFIRM, client.slug)),
                             Button("✖ Отмена", cb(ACT_CANCEL))]])
+
+
+def reminder_card(client: Client | None, rem: dict, summary: str = "") -> Outgoing:
+    """Напоминание в срок: текст, сводка по клиенту, ✔ Сделано · ⏰ +3 · ⏰ +7."""
+    head = tagline(client) if client else ""
+    lines = [head + "⏰ <b>Напоминание</b>", esc(rem.get("text", ""))]
+    if summary:
+        lines.append(f"<i>{esc(summary)}</i>")
+    rid = rem["id"]
+    return Outgoing("\n".join(lines), [[
+        Button("✔ Сделано", cb(ACT_REM_DONE, rid)),
+        Button("⏰ +3 дня", cb(ACT_REM_SNOOZE3, rid)),
+        Button("⏰ +7 дней", cb(ACT_REM_SNOOZE7, rid)),
+    ]])
+
+
+def reminder_set_card(client: Client | None, rem: dict, when_label: str) -> Outgoing:
+    head = tagline(client) if client else ""
+    return Outgoing(head + f"⏰ Напомню <b>{esc(when_label)}</b>: {esc(rem.get('text', ''))}",
+                    [[Button("✖ Отменить", cb(ACT_REM_CANCEL, rem["id"]))]])
+
+
+def reminders_list_card(items: list[tuple[dict, str, str]]) -> Outgoing:
+    """items: (напоминание, имя клиента, подпись срока)."""
+    if not items:
+        return Outgoing("Напоминаний нет. Напиши, например: «напомни в четверг коснуться Гареева».")
+    lines = [f"<b>⏰ Напоминания · {len(items)}</b>"]
+    rows = []
+    for rem, who, when in items:
+        lines.append(f"• {esc(when)} · <b>{esc(who)}</b> — {esc(rem.get('text', ''))}")
+        rows.append([Button(f"✖ {when} · {who}"[:60], cb(ACT_REM_CANCEL, rem["id"]))])
+    return Outgoing("\n".join(lines), rows)
+
+
+def followup_card(client: Client, silent_days: int, news: str, searches_line: str) -> Outgoing:
+    """Клиент затих: что накопилось и что делать."""
+    lines = [tagline(client),
+             f"⏳ <b>{esc(client.short_name)} молчит {silent_days} дн.</b> — с последнего касания:",
+             esc(news) if news else "новых объектов не появилось",
+             esc(searches_line)]
+    return Outgoing("\n".join(lines), [
+        [Button(f"{ICON_NEW} Показать что нового", cb(ACT_SHOW_NEW, client.slug))],
+        [Button("⏰ Напомнить через неделю", cb(ACT_REM_SNOOZE7, f"fu:{client.slug}")),
+         Button("⏸ Заморозить", cb(ACT_PAUSE, client.slug))],
+    ])
 
 
 def confirm_card(text: str, action: str, client: str = "", search: str = "", listing: str = "") -> Outgoing:

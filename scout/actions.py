@@ -226,6 +226,7 @@ def create_search(client: Client, brief: dict, store: Store | None = None,
     """Подбор: лист в книге, карточка в хранилище, первый сбор."""
     store = store or get_store()
     require_google()
+    store.update(CLIENTS, client.slug, {"last_touch": dt.date.today().isoformat()})
     taken = {s.slug for s in client_searches(client, store=store)}
     search = search_from_brief(client.slug, brief, taken)
     books.create_search_sheet(client, search)

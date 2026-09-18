@@ -10,8 +10,14 @@ from __future__ import annotations
 
 from langchain.tools import tool
 
-from scout import actions, books, cards, outbox
+import datetime as dt
+import os
+from zoneinfo import ZoneInfo
+
+from scout import actions, books, cards, outbox, reminders
 from scout.store import STATES, get_store
+
+TZ = ZoneInfo(os.environ.get("TZ") or "Asia/Dubai")
 
 
 def _client(hint: str):
@@ -220,4 +226,52 @@ def discard_draft(client_name: str) -> str:
     return f"Удалено черновиков: {len(found)}. Кнопка «Запустить» под старой карточкой больше не сработает."
 
 
-TOOLS = [list_clients, client_overview, propose_client, propose_search, manage_client, discard_draft]
+@tool
+def set_reminder(when: str, text: str, client: str = "") -> str:
+    """Поставить напоминание Алексею: коснуться клиента, предложить объект, позвонить.
+
+    Дату и время посчитай сам из слов Алексея относительно сегодняшнего дня по Дубаю
+    («в четверг», «через неделю», «25-го в 11») и передай в ISO. Без времени — 10:00.
+    Напоминание придёт в тему клиента карточкой с кнопками «Сделано / +3 дня / +7 дней».
+
+    Args:
+        when: ISO дата или дата-время: «2026-09-25» или «2026-09-25T11:00».
+        text: что сделать, своими словами Алексея: «предложить Гарееву Palm Villas».
+        client: slug или фамилия клиента; пусто — общее напоминание в General.
+
+    Returns:
+        Подтверждение со сроком, как его понял бот.
+    """
+    due = reminders.parse_when(when, TZ)
+    if due is None:
+        return f"Не понял дату «{when}» — нужен ISO-формат, например 2026-09-25T11:00."
+    if due < dt.datetime.now(TZ):
+        return f"Дата {when} уже прошла — уточни у Алексея."
+    c = _client(client) if client else None
+    rem = reminders.add(c.slug if c else "", due, text)
+    label = reminders.describe_due(rem["due"], TZ)
+    outbox.push(cards.reminder_set_card(c, rem, label))
+    return f"Напоминание поставлено на {label}" + (f" для {c.name}" if c else "") + f": {text}"
+
+
+@tool
+def list_reminders(client: str = "") -> str:
+    """Что запланировано: напоминания по всем клиентам или по одному.
+
+    Args:
+        client: slug или фамилия; пусто — все.
+
+    Returns:
+        Список «срок · клиент — текст».
+    """
+    c = _client(client) if client else None
+    items = reminders.pending(c.slug if c else None)
+    if not items:
+        return "Напоминаний нет."
+    names = {x.slug: x.short_name for x in actions.list_clients()}
+    return "\n".join(f"{reminders.describe_due(r['due'], TZ)} · {names.get(r.get('client'), 'общее')} — {r['text']}"
+                     for r in items)
+
+
+TOOLS = [list_clients, client_overview, propose_client, propose_search, manage_client, discard_draft,
+         set_reminder, list_reminders]

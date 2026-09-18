@@ -330,3 +330,44 @@ def test_enrich_dupes_and_series():
     assert extras == {"series": "серия 07", "dupes": 1}
     from scout.books import SECONDARY_HEADERS
     assert SECONDARY_HEADERS[-7:] == ["DLD м²", "Тел. брокера DLD", "Email DLD", "Разрешение до", "Юнит DLD", "Дубли", "Серия"]
+
+
+def test_reminders_lifecycle(store, client_and_search):
+    from zoneinfo import ZoneInfo
+
+    from scout import reminders
+
+    tz = ZoneInfo("Asia/Dubai")
+    client, _ = client_and_search
+    due = reminders.parse_when("2026-09-25", tz)
+    assert due.hour == 10 and due.tzinfo is not None
+    assert reminders.parse_when("2026-09-25T11:30", tz).hour == 11
+    assert reminders.parse_when("завтра", tz) is None
+    rem = reminders.add(client.slug, due, "предложить Palm Villas", store)
+    assert [r["id"] for r in reminders.pending(client.slug, store)] == [rem["id"]]
+    assert reminders.due_now(dt.datetime(2026, 9, 24, 12, 0, tzinfo=tz), store) == []
+    assert [r["id"] for r in reminders.due_now(dt.datetime(2026, 9, 25, 10, 0, tzinfo=tz), store)] == [rem["id"]]
+    assert reminders.describe_due(rem["due"], tz) == "пт 25.09 в 10:00"
+    snoozed = reminders.snooze(rem["id"], 3, tz, store)
+    assert snoozed["status"] == "pending" and dt.datetime.fromisoformat(snoozed["due"]).hour == 9
+    reminders.complete(rem["id"], store)
+    assert reminders.pending(client.slug, store) == []
+    # тихие часы: срок в 23:00 уезжает на 08:00 следующего дня
+    late = dt.datetime(2026, 9, 25, 23, 0, tzinfo=tz)
+    moved = reminders.defer_to_morning(late, (dt.time(22, 0), dt.time(8, 0)))
+    assert moved.day == 26 and moved.hour == 8
+
+
+def test_quiet_clients_rule(store):
+    from scout import reminders
+
+    today = dt.date(2026, 9, 18)
+    fresh = Client(slug="a", name="A A", last_touch="2026-09-15")
+    silent = Client(slug="b", name="B B", last_touch="2026-09-05")
+    silent_recently_pinged = Client(slug="c", name="C C", last_touch="2026-09-01", followup_sent="2026-09-15")
+    archived = Client(slug="d", name="D D", last_touch="2026-09-01", status="archived")
+    custom = Client(slug="e", name="E E", last_touch="2026-09-14", followup_days=3)
+    result = reminders.quiet_clients([fresh, silent, silent_recently_pinged, archived, custom], today)
+    assert [(c.slug, days) for c, days in result] == [("b", 13), ("e", 4)]
+    reminders.touch(silent, store)
+    assert store.get("scout_clients", "b")["last_touch"] == dt.date.today().isoformat()
