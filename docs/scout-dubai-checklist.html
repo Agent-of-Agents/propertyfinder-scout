@@ -39,7 +39,7 @@ h2{font-size:18px; letter-spacing:-.01em; flex:1}
 .item{background:var(--surface); border:1px solid var(--rule); border-radius:12px; margin-bottom:10px; overflow:hidden}
 .item.ok{border-color:var(--green-line)} .item.fail{border-color:var(--coral-line)} .item.skip{opacity:.6}
 .row{display:grid; grid-template-columns:44px 1fr; gap:0}
-.box{display:flex; align-items:flex-start; justify-content:center; padding:14px 0 0 10px; cursor:pointer; -webkit-tap-highlight-color:transparent}
+.box{touch-action:manipulation; display:flex; align-items:flex-start; justify-content:center; padding:14px 0 0 10px; cursor:pointer; -webkit-tap-highlight-color:transparent}
 .box span{width:26px; height:26px; border-radius:8px; border:1.5px solid var(--rule-2); background:var(--sunk); display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent; transition:all .15s}
 .item.ok .box span{background:var(--green-soft); border-color:var(--green); color:var(--green)}
 .item.fail .box span{background:var(--coral-soft); border-color:var(--coral); color:var(--coral)}
@@ -55,7 +55,7 @@ h2{font-size:18px; letter-spacing:-.01em; flex:1}
 .copy{flex:0 0 auto; background:var(--surface-2); border:1px solid var(--rule-2); color:var(--ink-2); border-radius:6px; padding:5px 9px; font-size:12px; cursor:pointer; font-family:inherit}
 .copy:active{background:var(--gold-soft); color:var(--gold)}
 .acts{display:flex; gap:6px; margin-top:10px}
-.acts button{flex:1; border-radius:8px; border:1px solid var(--rule-2); background:var(--surface-2); color:var(--ink-2); padding:9px 4px; font-size:13px; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent}
+.acts button{touch-action:manipulation; flex:1; border-radius:8px; border:1px solid var(--rule-2); background:var(--surface-2); color:var(--ink-2); padding:9px 4px; font-size:13px; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent}
 .acts button.on-ok{background:var(--green-soft); border-color:var(--green); color:var(--green)}
 .acts button.on-fail{background:var(--coral-soft); border-color:var(--coral); color:var(--coral)}
 .acts button.on-skip{border-color:var(--ink-3); color:var(--ink)}
@@ -180,7 +180,7 @@ const SECTIONS = [
 const STATES = ["", "ok", "fail", "skip"];
 const KEY = "scout-checklist-v1";
 let state = {items:{}};          // {id: {s: "ok"|"fail"|"skip"|"", note: ""}}
-let db = null, docRef = null, saveTimer = null, applyingRemote = false;
+let docRef = null, saveTimer = null;
 
 // ---- рендер
 const $ = (s, r=document) => r.querySelector(s);
@@ -212,6 +212,7 @@ function render(){
     root.appendChild(el);
   }
   updateStats();
+  bind();
 }
 function updateStats(){
   let ok=0, fail=0, skip=0, all=0;
@@ -237,75 +238,76 @@ function report(){
   return lines.length ? head + "\n\n" + lines.join("\n") : head + (ok ? "\n\nВсё отмеченное прошло." : "\n\nПока ничего не отмечено.");
 }
 
-// ---- состояние: db артефакта, запасной localStorage
+// ---- состояние: db артефакта, запасной localStorage.
+// Правило: локальная отметка никогда не затирается облаком. Слияние — по времени отметки.
 function setItem(id, s, note){
   const cur = state.items[id] || {s:"", note:""};
   state.items[id] = {s: s ?? cur.s, note: note ?? cur.note, at: new Date().toISOString()};
   persist();
 }
+function merge(remoteItems){
+  let changed = false;
+  for (const [id, r] of Object.entries(remoteItems || {})){
+    const l = state.items[id];
+    if (!l || (r.at || "") > (l.at || "")){ state.items[id] = r; changed = true; }
+  }
+  return changed;
+}
 function persist(){
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
-  if (docRef && !applyingRemote){
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(async () => {
-      try { await docRef.set({items: state.items, updated: new Date().toISOString()}); mark("сохранено"); }
-      catch(e){ mark("не сохранилось в облако"); }
-    }, 400);
-  }
+  if (!docRef) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try { await docRef.set({items: state.items, updated: new Date().toISOString()}); mark("облако ✓"); }
+    catch(e){ mark("облако: не сохранилось"); }
+  }, 500);
 }
-function mark(t){ const s=$("#sync"); s.textContent=t; }
-function applyState(next){
-  applyingRemote = true;
-  state = {items: (next && next.items) || {}};
-  render();
-  applyingRemote = false;
-}
+function mark(t){ const s=$("#sync"); if (s) s.textContent=t; }
 async function boot(){
-  try { const raw = localStorage.getItem(KEY); if (raw) state = JSON.parse(raw); } catch(e){}
+  try { const raw = localStorage.getItem(KEY); if (raw) state = JSON.parse(raw) || {items:{}}; } catch(e){}
+  if (!state.items) state.items = {};
   render();
   mark("локально");
+  let dbNs = null;
+  try { dbNs = (window.claude && window.claude.use) ? await window.claude.use("db") : null; } catch(e){ dbNs = null; }
+  if (!dbNs){ mark("локально"); return; }
   try {
-    db = window.claude && window.claude.use ? await window.claude.use("db") : null;
-  } catch(e){ db = null; }
-  if (!db){ mark("локально"); return; }
-  docRef = db.doc("checklist/run1");
-  try {
-    const snap = await docRef.get();
-    if (snap.exists){ applyState(snap.data()); mark("облако"); }
-    else if (Object.keys(state.items).length){ await docRef.set({items: state.items, updated: new Date().toISOString()}); mark("облако"); }
-    else mark("облако");
-    docRef.onSnapshot(s => { if (s.exists && !saveTimer) { const d = s.data(); if (JSON.stringify(d.items) !== JSON.stringify(state.items)) applyState(d); } },
-                      () => mark("облако: связь потеряна"));
-  } catch(e){ mark("облако недоступно"); }
+    const ref = dbNs.doc("checklist/run1");
+    const snap = await ref.get();
+    if (snap.exists && merge(snap.data().items)) render();
+    docRef = ref;
+    mark("облако");
+    if (Object.keys(state.items).length) persist();       // локальные отметки — в облако
+    ref.onSnapshot(sn => { if (sn.exists && merge(sn.data().items)) render(); },
+                   () => mark("облако: связь потеряна"));
+  } catch(e){ docRef = null; mark("локально (облако недоступно)"); }
 }
 
-// ---- события
-document.addEventListener("click", async (e) => {
-  const t = e.target.closest("[data-toggle],[data-set],[data-copy],#copy-report,#reset,#jump,#top");
-  if (!t) return;
-  if (t.dataset.toggle){
-    const id = t.dataset.toggle, cur = (state.items[id]||{}).s || "";
-    setItem(id, cur==="ok" ? "" : "ok"); render(); return;
-  }
-  if (t.dataset.set){
-    const [id, s] = t.dataset.set.split("|"); const cur=(state.items[id]||{}).s;
+// ---- события: обработчики вешаются на элементы после каждого рендера
+function bind(){
+  document.querySelectorAll("[data-toggle]").forEach(el => el.onclick = () => {
+    const id = el.dataset.toggle, cur = (state.items[id]||{}).s || "";
+    setItem(id, cur==="ok" ? "" : "ok"); render();
+  });
+  document.querySelectorAll("[data-set]").forEach(el => el.onclick = () => {
+    const [id, s] = el.dataset.set.split("|"); const cur=(state.items[id]||{}).s;
     setItem(id, cur===s ? "" : s); render();
     if (s==="fail") setTimeout(()=>{ const ta=document.querySelector(`[data-note="${id}"]`); if(ta) ta.focus(); }, 50);
-    return;
-  }
-  if (t.dataset.copy !== undefined){ await copy(t.dataset.copy); return; }
-  if (t.id==="copy-report"){ await copy(report()); return; }
-  if (t.id==="reset"){ if (confirm("Сбросить все отметки?")){ state={items:{}}; persist(); render(); } return; }
-  if (t.id==="jump"){
-    for (const sec of SECTIONS) for (const it of sec.items){ if(!(state.items[it.id]||{}).s){ document.getElementById("it-"+it.id).scrollIntoView({behavior:"smooth", block:"center"}); return; } }
-    document.getElementById("report-sec").scrollIntoView({behavior:"smooth"}); return;
-  }
-  if (t.id==="top"){ window.scrollTo({top:0, behavior:"smooth"}); }
-});
-document.addEventListener("input", (e) => {
-  const ta = e.target.closest("[data-note]"); if (!ta) return;
-  setItem(ta.dataset.note, undefined, ta.value); $("#report").textContent = report();
-});
+  });
+  document.querySelectorAll("[data-copy]").forEach(el => el.onclick = () => copy(el.dataset.copy));
+  document.querySelectorAll("[data-note]").forEach(el => el.oninput = () => {
+    setItem(el.dataset.note, undefined, el.value); $("#report").textContent = report();
+  });
+}
+$("#copy-report").onclick = () => copy(report());
+$("#reset").onclick = () => { if (confirm("Сбросить все отметки?")){ state={items:{}}; persist(); render(); } };
+$("#jump").onclick = () => {
+  for (const sec of SECTIONS) for (const it of sec.items){ if(!(state.items[it.id]||{}).s){ document.getElementById("it-"+it.id).scrollIntoView({behavior:"smooth", block:"center"}); return; } }
+  document.getElementById("report-sec").scrollIntoView({behavior:"smooth"});
+};
+$("#top").onclick = () => window.scrollTo({top:0, behavior:"smooth"});
+window.addEventListener("error", e => mark("ошибка: " + (e.message || "").slice(0, 60)));
+
 async function copy(text){
   try { await navigator.clipboard.writeText(text); toast("Скопировано"); }
   catch(e){ const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy"); toast("Скопировано");}catch(_){toast("Не удалось скопировать");} ta.remove(); }
