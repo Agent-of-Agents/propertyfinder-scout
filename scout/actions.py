@@ -435,6 +435,28 @@ def raw_row(search: Search, listing_id: str, store: Store | None = None) -> dict
     raise NotFound(f"Объект {listing_id} нет в последней выгрузке подбора «{search.title}»")
 
 
+def fresh_row(search: Search, listing_id: str, store: Store | None = None) -> dict:
+    """Строка выгрузки с полями со страницы списка (фото, id брокера); нет — пересобрать список.
+
+    Подборы, собранные до 18.09.2026, хранят строки без images/agent_id. Страница списка
+    с сервера открыта, пересбор — секунды; сверку листа при этом не делаем.
+    """
+    store = store or get_store()
+    row = raw_row(search, listing_id, store)
+    if row.get("images") and row.get("pf_listing_id"):
+        return row
+    if search.market != MARKET_SECONDARY or not search.sources:
+        return row
+    log.info("Выгрузка %s без новых полей — пересобираю список", search.key)
+    rows = runner.collect_listings(search)
+    if rows:
+        store.put(RAW, search.key, {"rows": rows, "collected": dt.date.today().isoformat()})
+    for r in rows:
+        if r.get("id") == listing_id:
+            return r
+    return row
+
+
 def enrich_for_card(search: Search, row: dict, store: Store | None = None, with_photo: bool = True) -> dict:
     """Дельта к медиане, этаж из заголовка, первое фото — для карточки."""
     store = store or get_store()
@@ -542,9 +564,9 @@ def build_pdf(client: Client, search: Search, listing_id: str, price: int,
     from scripts import make_presentation as mp
 
     work = runner.workdir(client)
+    row = fresh_row(search, listing_id, store)          # при необходимости пересоберёт выгрузку
     runner.materialize_raw(store, search, work)
     mp.configure(work, {**search.as_sync_client(client), "raw": "raw/pf_listings.json"})
-    row = raw_row(search, listing_id, store)
     sheet_row = {"id": listing_id, "type": f"{row.get('bedrooms')}BR",
                  "agency": row.get("agency") or "", "my_price": price}
     pdf, folder = mp.make(listing_id, price, sheet_row)
@@ -563,7 +585,7 @@ def build_pdf(client: Client, search: Search, listing_id: str, price: int,
 def request_broker(client: Client, search: Search, listing_id: str, store: Store | None = None) -> dict:
     """📩 Запросить: свежая WhatsApp-ссылка PF, галочка от имени Алексея."""
     store = store or get_store()
-    row = raw_row(search, listing_id, store)
+    row = fresh_row(search, listing_id, store)
     if not row.get("url"):
         raise NotFound("У объекта нет ссылки на объявление")
     identity = whatsapp.identity_from_row(row) or whatsapp.listing_identity(row["url"])
