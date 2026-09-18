@@ -216,6 +216,25 @@ def book_link(client) -> str:
     return f"https://docs.google.com/spreadsheets/d/{client.spreadsheet_id}"
 
 
+def model_error_text(error: Exception) -> str:
+    """Причина сбоя модели — в чат, человеческим языком, а не «смотри лог»."""
+    text = str(error)
+    low = text.lower()
+    if "credit balance" in low or "billing" in low:
+        return ("⚠️ Модель недоступна: на счёте Anthropic API закончились средства. "
+                "Пополни баланс в console.anthropic.com → Plans & Billing и повтори сообщение.")
+    if "rate_limit" in low or "429" in low:
+        return "⚠️ Модель отвечает «слишком много запросов» — подожди минуту и повтори."
+    if "overloaded" in low or "529" in low:
+        return "⚠️ Сервис Anthropic перегружен — повтори через пару минут."
+    if "authentication" in low or "401" in low or "invalid x-api-key" in low:
+        return "⚠️ Модель не принимает ключ ANTHROPIC_API_KEY — проверь его в .env."
+    if "timeout" in low or "timed out" in low:
+        return "⚠️ Модель не ответила вовремя — повтори сообщение."
+    short = text.split("\n")[0][:200]
+    return f"⚠️ Модель не ответила: {short}. Подробности в логе."
+
+
 # ------------------------------------------------------------------ контекст для агента
 
 async def resolve_context(message: Message):
@@ -395,9 +414,9 @@ async def handle_text(message: Message, text: str) -> None:
         try:
             result = await _agent.ainvoke({"messages": [{"role": "user", "content": prompt}]}, config)
             answer = result["messages"][-1].text
-        except Exception:
+        except Exception as error:  # noqa: BLE001
             log.exception("Ошибка при обработке сообщения")
-            answer = "Что-то пошло не так при обращении к модели. Подробности в логе."
+            answer = model_error_text(error)
 
     for part in chunks(answer):
         await message.answer(part)
