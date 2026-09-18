@@ -24,7 +24,7 @@ from pathlib import Path
 from lib import listing_detail, sheets, whatsapp
 from lib.google_auth import CredentialsError
 
-from . import books, cards, outbox, runner
+from . import books, cards, enrich, outbox, runner
 from .models import (
     CLIENT_ACTIVE,
     CLIENT_ARCHIVED,
@@ -442,6 +442,7 @@ def enrich_for_card(search: Search, row: dict, store: Store | None = None, with_
     med = (state.get("last_report") or {}).get("medians") or runner.medians(raw_rows(search, store))
     out = dict(row)
     out["market_delta"] = runner.market_delta(row, med)
+    out.update(enrich.card_extras(row, raw_rows(search, store)))     # серия, дубли
     title = (row.get("title") or "").lower()
     for word, label in (("high floor", "высокий этаж"), ("mid floor", "средний этаж"), ("low floor", "низкий этаж")):
         if word in title:

@@ -306,3 +306,27 @@ def test_pf_list_row_carries_detail_data(monkeypatch):
     assert pf.needs_proxy("https://www.propertyfinder.ae/en/plp/buy/x.html")
     assert pf.needs_proxy("https://www.propertyfinder.ae/leads/v1/lead-request/whatsapp")
     assert not pf.needs_proxy("https://www.propertyfinder.ae/en/buy/dubai/x.html")
+
+
+def test_enrich_dupes_and_series():
+    from scout import enrich
+
+    rows = [
+        {"id": "PF-1", "building": "Marina Shores", "bedrooms": 2, "size_sqft": 1131, "price": 3_850_000,
+         "agent_name": "Olga", "url": "u1", "title": "Marina View | 07 Series", "description": ""},
+        {"id": "PF-2", "building": "Marina Shores", "bedrooms": 2, "size_sqft": 1131.2, "price": 3_700_000,
+         "agent_name": "Timur", "url": "u2", "title": "Great deal", "description": "Type C unit 2304"},
+        {"id": "PF-3", "building": "Marina Shores", "bedrooms": 2, "size_sqft": 1204, "price": 4_000_000,
+         "agent_name": "Ivan", "url": "u3", "title": "x", "description": ""},
+        {"id": "PF-4", "building": "Other Tower", "bedrooms": 2, "size_sqft": 1131, "price": 1, "title": "", "description": ""},
+    ]
+    dupes = enrich.find_dupes(rows)
+    assert set(dupes) == {"PF-1", "PF-2"} and dupes["PF-1"][0]["id"] == "PF-2"
+    assert enrich.dupes_text(dupes["PF-1"]) == "≈ 3 700 000 AED · Timur · u2"
+    assert enrich.series_text(rows[0]) == "серия 07"
+    assert "тип C" in enrich.series_text(rows[1]) and "юнит 2304" in enrich.series_text(rows[1])
+    assert enrich.series_text(rows[2]) == "—"
+    extras = enrich.card_extras(rows[0], rows)
+    assert extras == {"series": "серия 07", "dupes": 1}
+    from scout.books import SECONDARY_HEADERS
+    assert SECONDARY_HEADERS[-7:] == ["DLD м²", "Тел. брокера DLD", "Email DLD", "Разрешение до", "Юнит DLD", "Дубли", "Серия"]

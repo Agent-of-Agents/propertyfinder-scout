@@ -16,7 +16,7 @@ from pathlib import Path
 
 from lib import distress, offplan, offplan_sheet, pf_projects, propertyfinder, sync
 
-from . import books
+from . import books, enrich
 from .models import MARKET_OFFPLAN, MARKET_SECONDARY, SEARCH_ACTIVE, Client, Search
 from .store import META, RAW, STATES, Store
 
@@ -80,6 +80,10 @@ def run_secondary(store: Store, client: Client, search: Search, today: dt.date) 
     store.put(RAW, search.key, {"rows": fresh, "collected": today.isoformat()})
     report = sync.run(search.as_sync_client(client), fresh, store.state_handle(search.key), today)
     report["total"] = len(fresh)
+    try:
+        report["enrich"] = enrich.apply(client, search, fresh)      # серия, дубли ≈, колонки DLD
+    except Exception as error:  # noqa: BLE001 — обогащение не должно валить сверку
+        log.warning("Обогащение %s: %s", search.key, error)
     return report
 
 

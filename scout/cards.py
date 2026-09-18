@@ -107,6 +107,8 @@ def listing_card(client: Client, search: Search, row: dict, position: str = "") 
         lines.append(f"{ru_mark}{esc(agent)}{extra}")
     if row.get("series"):
         lines.append(f"Серия: {esc(row['series'])}")
+    if row.get("dupes"):
+        lines.append(f"≈ Та же квартира ещё у {row['dupes']} брокер{'а' if row['dupes'] in (1, 2, 3, 4) else 'ов'} — см. «Дубли» в листе")
     if row.get("comment"):
         lines.append(f"<i>{esc(row['comment'])}</i>")
     if row.get("url"):
