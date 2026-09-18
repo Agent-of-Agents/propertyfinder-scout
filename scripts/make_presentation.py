@@ -403,7 +403,7 @@ def make(listing_id: str, price: int, row: dict | None = None) -> tuple[Path, di
     listing = find_listing(listing_id)
     print(f"Ссылка : {listing['url']}")
 
-    detail = enrich(listing_detail.fetch_detail(listing["url"]),
+    detail = enrich(listing_detail.detail_or_row(listing),
                     stored_title=listing.get("title", ""))
     print(f"Объект : {detail['building']} · {detail['size_m2']} sqm · {detail['bedrooms']}BR")
 

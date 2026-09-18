@@ -126,9 +126,7 @@ def object_details(client: str, search: str, listing_id: str) -> str:
     """
     c, s = _pair(client, search)
     row = actions.raw_row(s, listing_id)
-    if not row.get("url"):
-        return "У объекта нет ссылки на объявление."
-    d = listing_detail.fetch_detail(row["url"])
+    d = listing_detail.detail_or_row(row)
     parts = [f"{c.short_name} · {s.title} · {listing_id}",
              f"Заголовок: {d.get('title', '')}",
              f"{d.get('bedrooms')}BR · {d.get('size_m2')} м² · {row.get('price')} AED · {row.get('price_per_m2')} AED/м²",

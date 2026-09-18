@@ -672,9 +672,21 @@ async def cb_approve(call: CallbackQuery, p: dict, chat_id: int, thread: int | N
 
 
 async def cb_request(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
+    from lib.whatsapp import LeadRequestError
+
     client = await run_blocking(actions.get_client, p["client"])
     search = await run_blocking(actions.get_search, p["client"], p["search"])
-    result = await run_blocking(actions.request_broker, client, search, p["listing"])
+    try:
+        result = await run_blocking(actions.request_broker, client, search, p["listing"])
+    except LeadRequestError as error:
+        # Шлюз PF с сервера закрыт (CloudFront 403) — даём ссылку на объявление, галочку ставим
+        row = await run_blocking(actions.raw_row, search, p["listing"])
+        try:
+            await run_blocking(actions.SheetRows(client, search).write, p["listing"], {"📩 Запросить": True}, True)
+        except Exception as mark_error:  # noqa: BLE001
+            log.warning("Галочка 📩 не поставлена: %s", mark_error)
+        await send(chat_id, cards.whatsapp_fallback_card(client, search, row, str(error)), thread)
+        return
     await send(chat_id, cards.whatsapp_card(client, search, result["row"], result["link"]), thread)
 
 

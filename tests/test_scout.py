@@ -283,3 +283,26 @@ def test_find_drafts_by_name(store):
     d = actions.save_draft("client", {"client": {"name": "Хилтон Пэрис"}, "search": {}}, store)
     assert [x["id"] for x in actions.find_drafts("хилтон", store)] == [d["id"]]
     assert actions.find_drafts("иванов", store) == []
+
+
+def test_pf_list_row_carries_detail_data(monkeypatch):
+    from lib import listing_detail, propertyfinder as pf, whatsapp
+
+    prop = {"id": 1, "listing_id": "ABC", "title": "Marina View | High Floor", "price": {"value": 3_850_000},
+            "size": {"value": 1131}, "bedrooms": 2, "agent": {"id": 5, "name": "Olga", "languages": ["Russian"]},
+            "broker": {"id": 9, "name": "Prop Plus"}, "location": {"name": "Marina Shores"},
+            "images": [{"medium": "https://x/a/668x452.jpg?v=1", "classification_label": "living"},
+                       {"medium": "https://x/b/668x452.jpg?v=2", "classification_label": "floor plan"}],
+            "floor_plans": [{"image_url": "https://x/plan.png"}], "amenity_names": ["Balcony"], "description": "d"}
+    row = pf.normalize({"property": prop})
+    assert row["images"] == ["https://x/a/1312x894.jpg?v=1"]                 # полный размер, план вынесен
+    assert row["floor_plans"] == ["https://x/plan.png", "https://x/b/1312x894.jpg?v=2"]
+    assert row["agent_id"] == "5" and row["broker_id"] == "9" and row["pf_listing_id"] == "ABC"
+    assert whatsapp.identity_from_row(row) == {"listing_id": "ABC", "agent_id": "5", "client_id": "9",
+                                               "reference": "", "building": "Marina Shores"}
+    d = listing_detail.detail_from_row(row)
+    assert d["floor"] and d["images"] == row["images"] and d["amenities"] == ["Balcony"]
+    monkeypatch.setenv("PF_PROXY_URL", "http://u:p@proxy:3128")
+    assert pf.needs_proxy("https://www.propertyfinder.ae/en/plp/buy/x.html")
+    assert pf.needs_proxy("https://www.propertyfinder.ae/leads/v1/lead-request/whatsapp")
+    assert not pf.needs_proxy("https://www.propertyfinder.ae/en/buy/dubai/x.html")

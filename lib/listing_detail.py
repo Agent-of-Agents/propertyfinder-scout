@@ -22,6 +22,60 @@ FLOOR_WORDS = {
 }
 
 
+def detail_from_row(row: dict) -> dict:
+    """Карточка в форме fetch_detail — из строки страницы списка (lib.propertyfinder.normalize).
+
+    Нужна на сервере: карточки объявлений PF там отдают 403, а на странице списка
+    есть всё — фото полного размера, планировки, описание, удобства.
+    """
+    title = row.get("title") or ""
+    floor = ""
+    for needle, label in FLOOR_WORDS.items():
+        if needle in title.lower():
+            floor = label
+            break
+    return {
+        "id": row.get("id"),
+        "url": row.get("url"),
+        "title": title,
+        "description": row.get("description") or "",
+        "building": row.get("building"),
+        "location": row.get("location"),
+        "type": row.get("type"),
+        "bedrooms": row.get("bedrooms"),
+        "bathrooms": row.get("bathrooms"),
+        "size_sqft": row.get("size_sqft"),
+        "size_m2": row.get("size_m2"),
+        "price": row.get("price"),
+        "completion": row.get("completion"),
+        "furnished": row.get("furnished"),
+        "floor": floor,
+        "amenities": list(row.get("amenities") or []),
+        "images": list(row.get("images") or []),
+        "floor_plans": list(row.get("floor_plans") or []),
+        "plan_unit_numbers": [],
+        "permit_validation_url": row.get("rera_permit") or "",
+        "reference": row.get("reference") or "",
+        "agent_name": row.get("agent_name"),
+        "agency": row.get("agency"),
+        "from_row": True,
+    }
+
+
+def detail_or_row(row: dict) -> dict:
+    """Сначала карточка с PF; не отдалась (403 с сервера) — собираем из строки списка."""
+    if row.get("url"):
+        try:
+            detail = fetch_detail(row["url"])
+            if detail.get("images"):
+                return detail
+        except Exception:  # noqa: BLE001 — на сервере это штатно, см. detail_from_row
+            pass
+    if row.get("images"):
+        return detail_from_row(row)
+    raise RuntimeError("Карточка объявления недоступна, а в выгрузке нет фото — пересобери подбор (/run)")
+
+
 def fetch_detail(url: str) -> dict:
     """Полная карточка объявления: характеристики, удобства, ссылки на фото."""
     data = json.loads(NEXT_DATA.search(fetch(url)).group(1))

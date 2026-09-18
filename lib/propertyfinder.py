@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from typing import Any, Iterator
@@ -51,10 +52,59 @@ SLAVIC_NAMES = {
 }
 
 
+# Что PF за CloudFront закрывает с IP серверов (проверено 18.09.2026 с DigitalOcean):
+# карточки объявлений /en/plp/… и шлюз /leads/… — 403; страницы списка и фото — 200.
+# Для закрытых путей запрос идёт через PF_PROXY_URL, если он задан (http://user:pass@host:port).
+PROXIED_PREFIXES = ("/en/plp/", "/ar/plp/", "/leads/")
+FULL_IMAGE_SIZE = "1312x894"
+
+
+def needs_proxy(url: str) -> bool:
+    return any(p in url for p in PROXIED_PREFIXES)
+
+
+def opener_for(url: str) -> urllib.request.OpenerDirector:
+    proxy = os.environ.get("PF_PROXY_URL", "").strip()
+    if proxy and needs_proxy(url):
+        return urllib.request.build_opener(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
+    return urllib.request.build_opener()
+
+
+def urlopen(request: urllib.request.Request, timeout: int = 40):
+    """urlopen с учётом прокси для закрытых путей PF."""
+    return opener_for(request.full_url).open(request, timeout=timeout)
+
+
 def fetch(url: str, timeout: int = 40) -> str:
     request = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with urlopen(request, timeout=timeout) as response:
         return response.read().decode("utf-8", errors="replace")
+
+
+def full_image(url: str) -> str:
+    """Со страницы списка PF отдаёт 668x452; полный размер лежит по тому же пути, хеш v= не проверяется."""
+    return re.sub(r"/\d+x\d+\.jpg", f"/{FULL_IMAGE_SIZE}.jpg", url or "")
+
+
+def list_images(prop: dict) -> tuple[list[str], list[str]]:
+    """Фото и планировки объявления из данных страницы списка — карточка объявления не нужна."""
+    images, plans = [], []
+    for image in prop.get("images") or []:
+        if not isinstance(image, dict):
+            continue
+        url = image.get("medium") or image.get("small") or image.get("full")
+        if not url:
+            continue
+        label = (image.get("classification_label") or "").lower()
+        (plans if ("plan" in label or "layout" in label) else images).append(full_image(url))
+    for plan in prop.get("floor_plans") or []:
+        if isinstance(plan, dict):
+            url = plan.get("image_url") or plan.get("full") or plan.get("url") or plan.get("image")
+            if url and url not in plans:
+                plans.insert(0, url)
+        elif isinstance(plan, str) and plan not in plans:
+            plans.insert(0, plan)
+    return images, plans
 
 
 def parse_page(html: str) -> tuple[list[dict], int]:
@@ -108,6 +158,7 @@ def normalize(listing: dict) -> dict | None:
 
     size_m2 = round(size_sqft * SQFT_TO_M2, 1) if size_sqft else None
     score, reason = ru_score(agent, title)
+    images, plans = list_images(prop)
 
     return {
         "id": f"PF-{prop.get('id')}",
@@ -142,6 +193,15 @@ def normalize(listing: dict) -> dict | None:
         "images_count": prop.get("images_count"),
         "listed_date": (prop.get("listed_date") or "")[:10],
         "reference": prop.get("reference"),
+        # Всё, за чем раньше ходили на карточку объявления — она с сервера закрыта (403)
+        "pf_listing_id": prop.get("listing_id") or "",
+        "agent_id": str(agent.get("id") or ""),
+        "broker_id": str(broker.get("id") or ""),
+        "images": images,
+        "floor_plans": plans,
+        "description": prop.get("description") or "",
+        "amenities": list(prop.get("amenity_names") or []),
+        "rera_permit": ((prop.get("rera") or {}).get("permit_validation_url") or "") if isinstance(prop.get("rera"), dict) else "",
     }
 
 

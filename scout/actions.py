@@ -446,16 +446,17 @@ def enrich_for_card(search: Search, row: dict, store: Store | None = None, with_
     for word, label in (("high floor", "высокий этаж"), ("mid floor", "средний этаж"), ("low floor", "низкий этаж")):
         if word in title:
             out["floor_hint"] = label
-    if with_photo and row.get("url") and search.market == MARKET_SECONDARY:
-        try:
-            detail = listing_detail.fetch_detail(row["url"])
-            images = detail.get("images") or []
-            if images:
-                out["photo_url"] = images[0]
-            if detail.get("reference"):
-                out["reference"] = detail["reference"]
-        except Exception as error:  # noqa: BLE001 — карточка без фото лучше, чем без карточки
-            log.info("Фото для %s не получено: %s", row.get("id"), error)
+    if with_photo and search.market == MARKET_SECONDARY:
+        images = row.get("images") or []
+        if images:
+            out["photo_url"] = images[0]                 # со страницы списка, карточка PF не нужна
+        elif row.get("url"):
+            try:
+                detail = listing_detail.fetch_detail(row["url"])
+                if detail.get("images"):
+                    out["photo_url"] = detail["images"][0]
+            except Exception as error:  # noqa: BLE001 — карточка без фото лучше, чем без карточки
+                log.info("Фото для %s не получено: %s", row.get("id"), error)
     return out
 
 
@@ -564,7 +565,7 @@ def request_broker(client: Client, search: Search, listing_id: str, store: Store
     row = raw_row(search, listing_id, store)
     if not row.get("url"):
         raise NotFound("У объекта нет ссылки на объявление")
-    identity = whatsapp.listing_identity(row["url"])
+    identity = whatsapp.identity_from_row(row) or whatsapp.listing_identity(row["url"])
     parts = whatsapp.request_link(identity, row["url"])
     if not whatsapp.looks_authentic(parts.get("text", "")):
         log.warning("Текст WhatsApp без attempt_id для %s", listing_id)

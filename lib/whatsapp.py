@@ -32,7 +32,7 @@ import urllib.request
 import uuid
 from pathlib import Path
 
-from .propertyfinder import NEXT_DATA, UA, fetch
+from .propertyfinder import NEXT_DATA, UA, fetch, urlopen
 
 LEAD_ENDPOINT = "https://www.propertyfinder.ae/leads/v1/lead-request/whatsapp"
 
@@ -65,6 +65,15 @@ def listing_identity(listing_url: str) -> dict:
     }
 
 
+def identity_from_row(row: dict) -> dict | None:
+    """Идентификаторы из строки страницы списка — карточка объявления не нужна."""
+    if row.get("pf_listing_id") and row.get("agent_id") and row.get("broker_id"):
+        return {"listing_id": row["pf_listing_id"], "agent_id": str(row["agent_id"]),
+                "client_id": str(row["broker_id"]), "reference": row.get("reference") or "",
+                "building": row.get("building") or ""}
+    return None
+
+
 def request_link(identity: dict, listing_url: str) -> dict:
     """Попросить у PF ссылку с attempt_id — то же, что тап по кнопке на сайте.
 
@@ -95,16 +104,18 @@ def request_link(identity: dict, listing_url: str) -> dict:
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urlopen(request, timeout=30) as response:
             answer = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")[:200]
         if error.code in (403, 405, 429):
             raise LeadRequestError(
-                f"PF не пустил скрипт (HTTP {error.code}) — вероятно, защита WAF. "
-                f"Ссылку придётся брать через браузер. {detail}"
+                f"PF не пустил сервер к WhatsApp-шлюзу (HTTP {error.code}, CloudFront). "
+                "Нужен прокси (PF_PROXY_URL) — или открой объявление и нажми WhatsApp на сайте."
             ) from error
         raise LeadRequestError(f"HTTP {error.code}: {detail}") from error
+    except urllib.error.URLError as error:
+        raise LeadRequestError(f"WhatsApp-шлюз PF недоступен: {error.reason}") from error
 
     link = answer.get("whatsapp_link") or ""
     if not link:

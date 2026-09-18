@@ -323,6 +323,23 @@ def whatsapp_card(client: Client, search: Search, row: dict, link: str) -> Outgo
     ], meta={"client": client.slug, "search": search.slug, "listing": lid})
 
 
+def whatsapp_fallback_card(client: Client, search: Search, row: dict, reason: str) -> Outgoing:
+    """Шлюз PF с сервера закрыт — WhatsApp жмёт Алексей на странице объявления."""
+    lid = row.get("id", "")
+    lines = [tagline(client, search),
+             f"<b>{esc(row.get('agent_name'))} · {esc(row.get('agency'))}</b>",
+             f"{esc(row.get('bedrooms'))}BR · {esc(row.get('size_m2'))} м² · {money(row.get('price'))}",
+             f"⚠️ {esc(reason)}",
+             "Открой объявление и нажми там кнопку WhatsApp — текст PF подставится сам, не редактируй его. "
+             "Потом вернись и нажми «Отправил»."]
+    rows = []
+    if row.get("url"):
+        rows.append([Button("🔗 Открыть объявление на PF", url=row["url"])])
+    rows.append([Button(f"{ICON_SENT} Отправил", cb(ACT_SENT, client.slug, search.slug, lid)),
+                 Button("✖ Передумал", cb(ACT_CANCEL, client.slug, search.slug, lid))])
+    return Outgoing("\n".join(lines), rows, meta={"client": client.slug, "search": search.slug, "listing": lid})
+
+
 def ask_price_card(client: Client, search: Search, row: dict) -> Outgoing:
     lines = [tagline(client, search),
              f"<b>{esc(row.get('bedrooms'))}BR · {esc(row.get('size_m2'))} м² · {esc(row.get('agency'))}</b>",
