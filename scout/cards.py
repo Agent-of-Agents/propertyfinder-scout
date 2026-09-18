@@ -25,6 +25,7 @@ ACT_SHOW_NEW, ACT_SHOW_PRICES, ACT_SHOW_DISTRESS = "nw", "pr", "ds"
 ACT_CONFIRM, ACT_CLOSE_OBJECT = "ok", "co"
 ACT_PAUSE, ACT_RESUME, ACT_CLIENTS = "ps", "rs", "cl"
 ACT_REBUILD = "rb"
+ACT_DELETE, ACT_DELETE_CONFIRM, ACT_MANAGE = "dl", "dd", "mg"      # удалить полностью: карточка → подтверждение
 
 
 @dataclass
@@ -344,6 +345,39 @@ def pdf_card(client: Client, search: Search, result: dict) -> Outgoing:
         buttons.append(Button("📂 Папка", url=result["folder_link"]))
     buttons.append(Button("🔁 Пересобрать", cb(ACT_REBUILD, client.slug, search.slug, result.get("listing", ""))))
     return Outgoing("\n".join(lines), [buttons], file_path=result.get("pdf_path", ""))
+
+
+def client_fate_card(client: Client, searches: list, note: str = "") -> Outgoing:
+    """Что делать с клиентом: заморозить, куплено, в архив, удалить. Решает Алексей кнопкой."""
+    live = [s for s in searches if s.status in ("active", "paused")]
+    lines = [f"<b>{esc(client.name)}</b> · {esc(client.status)}"]
+    if live:
+        lines.append("Подборы: " + ", ".join(f"{s.icon} {esc(s.title)}" + (" ⏸" if s.status == "paused" else "") for s in live))
+    else:
+        lines.append("Активных подборов нет.")
+    if note:
+        lines.append(f"<i>{esc(note)}</i>")
+    lines.append("\nЧто с ним делаем?")
+    rows = [
+        [Button("⏸ Заморозить", cb(ACT_PAUSE, client.slug)), Button("✓ Куплено", cb(ACT_CONFIRM, client.slug, "", "bought"))],
+        [Button("✕ В архив", cb(ACT_CONFIRM, client.slug, "", "dropped")), Button("🗑 Удалить полностью", cb(ACT_DELETE, client.slug))],
+    ]
+    if len(live) > 1:
+        for s in live:
+            rows.append([Button(f"✓ Куплено · {s.title}"[:60], cb(ACT_CONFIRM, client.slug, s.slug, "bought")),
+                         Button(f"✕ Закрыть · {s.title}"[:60], cb(ACT_CONFIRM, client.slug, s.slug, "dropped"))])
+    rows.append([Button("✖ Отмена", cb(ACT_CANCEL))])
+    return Outgoing("\n".join(lines), rows)
+
+
+def delete_confirm_card(client: Client, searches: list) -> Outgoing:
+    text = (f"🗑 <b>Удалить {esc(client.name)} полностью?</b>\n"
+            f"Подборов: {len(searches)}. Карточка клиента и состояние сверок исчезнут, "
+            "книга уйдёт в корзину Диска (30 дней можно вернуть), тема в группе удалится. "
+            "Папка с планировками на Диске останется.\n\n"
+            "Если клиент просто «на паузе» или «купил» — лучше ⏸ или ✓: история сохранится.")
+    return Outgoing(text, [[Button("🗑 Да, удалить", cb(ACT_DELETE_CONFIRM, client.slug)),
+                            Button("✖ Отмена", cb(ACT_CANCEL))]])
 
 
 def confirm_card(text: str, action: str, client: str = "", search: str = "", listing: str = "") -> Outgoing:

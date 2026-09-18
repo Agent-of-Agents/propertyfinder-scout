@@ -230,6 +230,9 @@ def create_search(client: Client, brief: dict, store: Store | None = None,
     search = search_from_brief(client.slug, brief, taken)
     books.create_search_sheet(client, search)
     save_search(search, store)
+    if client.status != CLIENT_ACTIVE:                 # «Добавить параллельно» у архивного — он снова в работе
+        client.status = CLIENT_ACTIVE
+        save_client(client, store)
     report: dict = {}
     if run_now:
         report = runner.run_search(store, client, search)
@@ -263,6 +266,75 @@ def close_search(client: Client, search: Search, reason: str, store: Store | Non
         client.status = CLIENT_ARCHIVED
         save_client(client, store)
     return search
+
+
+def pause_client(client: Client, store: Store | None = None) -> int:
+    """⏸ Заморозить: все активные подборы на паузу, прогон по ним не идёт, книга и тема остаются."""
+    store = store or get_store()
+    n = 0
+    for s in client_searches(client, active_only=True, store=store):
+        set_search_status(client, s, SEARCH_PAUSED, store)
+        n += 1
+    return n
+
+
+def resume_client(client: Client, store: Store | None = None) -> int:
+    store = store or get_store()
+    n = 0
+    for s in client_searches(client, store=store):
+        if s.status == SEARCH_PAUSED:
+            set_search_status(client, s, SEARCH_ACTIVE, store)
+            n += 1
+    return n
+
+
+def close_client(client: Client, reason: str, store: Store | None = None) -> list[Search]:
+    """✓ Куплено / ✕ В архив: закрыть все живые подборы с причиной; клиент уходит в архив."""
+    store = store or get_store()
+    closed = []
+    for s in client_searches(client, store=store):
+        if s.status in (SEARCH_ACTIVE, SEARCH_PAUSED):
+            closed.append(close_search(client, s, reason, store))
+    client.status = CLIENT_ARCHIVED
+    save_client(client, store)
+    return closed
+
+
+def delete_client(client: Client, store: Store | None = None) -> dict:
+    """🗑 Удалить полностью: записи из хранилища, книга — в корзину Диска (30 дней на «передумал»).
+
+    Единственное место, где Scout что-то удаляет, — только по кнопке с подтверждением.
+    Тему в Telegram удаляет bot.py (нужен Bot API). Папка объектов на Диске остаётся:
+    там могут лежать планировки от брокеров.
+    """
+    store = store or get_store()
+    result = {"client": client.slug, "searches": 0, "book_trashed": False, "topic_id": client.telegram_topic_id}
+    for s in client_searches(client, store=store):
+        for coll in (STATES, RAW):
+            store.delete(coll, s.key)
+        store.delete(SEARCHES, s.key)
+        result["searches"] += 1
+    if client.spreadsheet_id:
+        try:
+            from lib import drive
+            drive.trash_file(client.spreadsheet_id)
+            result["book_trashed"] = True
+        except Exception as error:  # noqa: BLE001
+            log.warning("Книга %s в корзину не ушла: %s", client.slug, error)
+    store.delete(CLIENTS, client.slug)
+    return result
+
+
+def find_drafts(hint: str, store: Store | None = None) -> list[dict]:
+    """Черновики карточек по имени клиента в них."""
+    store = store or get_store()
+    hint = (hint or "").strip().lower()
+    found = []
+    for d in store.find(DRAFTS):
+        name = ((d.get("client") or {}).get("name") or "").lower()
+        if not hint or hint in name or (d.get("client_slug") and hint in d["client_slug"]):
+            found.append(d)
+    return found
 
 
 def replace_search(client: Client, old: Search, brief: dict, store: Store | None = None) -> tuple[Search, dict]:

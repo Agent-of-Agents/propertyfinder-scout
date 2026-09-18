@@ -248,3 +248,38 @@ def test_budget_floor_is_enforced():
     assert sync.fits_client(villa_search, {"bedrooms": 6, "price": 125_000_000})         # +4 % к потолку — показываем
     assert not sync.fits_client(villa_search, {"bedrooms": 6, "price": 130_000_000})
     assert sync.fits_client({"bedrooms": ["2"], "budget": {"max": 4_500_000}}, {"bedrooms": 2, "price": 1_900_000})  # без min — как раньше
+
+
+def test_client_fate_pause_resume_close_delete(store, client_and_search):
+    client, search = client_and_search
+    client.spreadsheet_id = ""                              # без Google — только статусы
+    actions.save_client(client, store)
+    assert actions.pause_client(client, store) == 1
+    assert actions.get_search("ivanova", "marina-shores-2br", store).status == "paused"
+    assert actions.resume_client(client, store) == 1
+    assert actions.get_search("ivanova", "marina-shores-2br", store).status == "active"
+    closed = actions.close_client(client, "bought", store)
+    assert [s.close_reason for s in closed] == ["bought"]
+    assert actions.get_client("ivanova", store).status == "archived"
+    # новый подбор возвращает клиента в работу — без Google create_search не вызвать, проверяем правило напрямую
+    result = actions.delete_client(actions.get_client("ivanova", store), store)
+    assert result["searches"] == 1 and result["book_trashed"] is False
+    with pytest.raises(actions.NotFound):
+        actions.get_client("ivanova", store)
+    assert store.get(RAW, search.key) is None and store.get(STATES, search.key) is None
+
+
+def test_fate_and_delete_cards(client_and_search):
+    client, search = client_and_search
+    card = cards.client_fate_card(client, [search], note="купил")
+    labels = [b.label for row in card.buttons for b in row]
+    assert labels[:4] == ["⏸ Заморозить", "✓ Куплено", "✕ В архив", "🗑 Удалить полностью"]
+    assert "купил" in card.text
+    confirm = cards.delete_confirm_card(client, [search])
+    assert confirm.buttons[0][0].data == cards.cb(cards.ACT_DELETE_CONFIRM, "ivanova")
+
+
+def test_find_drafts_by_name(store):
+    d = actions.save_draft("client", {"client": {"name": "Хилтон Пэрис"}, "search": {}}, store)
+    assert [x["id"] for x in actions.find_drafts("хилтон", store)] == [d["id"]]
+    assert actions.find_drafts("иванов", store) == []

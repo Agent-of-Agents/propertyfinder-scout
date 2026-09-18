@@ -179,4 +179,45 @@ def propose_search(
             f"{len(active)} — Алексей выберет «Заменить» или «Добавить параллельно».")
 
 
-TOOLS = [list_clients, client_overview, propose_client, propose_search]
+@tool
+def manage_client(client: str, intent: str = "") -> str:
+    """Алексей просит убрать, заморозить, закрыть или удалить клиента — карточка с кнопками ему на решение.
+
+    Ничего не меняет сам: заморозить (⏸ пауза прогона), «куплено» (✓ подборы закрываются,
+    клиент в архив), «в архив» (✕ передумал), «удалить полностью» (🗑, с подтверждением) —
+    выбирает Алексей кнопкой. Черновики карточек (клиент ещё не создан) удаляются
+    инструментом discard_draft.
+
+    Args:
+        client: slug или фамилия клиента.
+        intent: что сказал Алексей, своими словами — попадёт в карточку подсказкой:
+            «купил», «передумал», «заморозить до октября», «удали».
+
+    Returns:
+        Подтверждение, что карточка отправлена.
+    """
+    c = _client(client)
+    searches = actions.client_searches(c)
+    outbox.push(cards.client_fate_card(c, searches, note=intent))
+    return f"Карточка по {c.name} с кнопками отправлена: заморозить / куплено / в архив / удалить."
+
+
+@tool
+def discard_draft(client_name: str) -> str:
+    """Удалить черновик карточки нового клиента, который так и не запустили.
+
+    Args:
+        client_name: имя или часть имени из карточки, например «Хилтон».
+
+    Returns:
+        Сколько черновиков удалено.
+    """
+    found = actions.find_drafts(client_name)
+    for d in found:
+        actions.drop_draft(d["id"])
+    if not found:
+        return f"Черновиков с «{client_name}» нет — возможно, уже удалён или запущен."
+    return f"Удалено черновиков: {len(found)}. Кнопка «Запустить» под старой карточкой больше не сработает."
+
+
+TOOLS = [list_clients, client_overview, propose_client, propose_search, manage_client, discard_draft]

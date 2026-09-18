@@ -290,13 +290,10 @@ async def on_clients(message: Message) -> None:
     rows = []
     for i in items:
         if i["status"] == "active":
-            rows.append([
-                InlineKeyboardButton(text=f"⏸ {i['name'][:20]}", callback_data=cards.cb(cards.ACT_PAUSE, i["slug"])),
-                InlineKeyboardButton(text="✔ Куплено", callback_data=cards.cb(cards.ACT_CONFIRM, i["slug"], "", CLOSE_BOUGHT)),
-                InlineKeyboardButton(text="✕ Закрыть", callback_data=cards.cb(cards.ACT_CONFIRM, i["slug"], "", CLOSE_DROPPED)),
-            ])
+            rows.append([InlineKeyboardButton(text=f"⚙ {i['name'][:40]}", callback_data=cards.cb(cards.ACT_MANAGE, i["slug"]))])
         else:
-            rows.append([InlineKeyboardButton(text=f"▶ {i['name'][:24]}", callback_data=cards.cb(cards.ACT_RESUME, i["slug"]))])
+            rows.append([InlineKeyboardButton(text=f"▶ Вернуть {i['name'][:24]}", callback_data=cards.cb(cards.ACT_RESUME, i["slug"])),
+                         InlineKeyboardButton(text="🗑", callback_data=cards.cb(cards.ACT_DELETE, i["slug"]))])
     await message.answer(spec.text, parse_mode=ParseMode.HTML,
                          reply_markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None)
 
@@ -371,18 +368,8 @@ async def on_close(message: Message) -> None:
     if client is None:
         await message.answer("Эта команда — в теме клиента.")
         return
-    active = await run_blocking(actions.client_searches, client, True)
-    if not active:
-        await message.answer("Активных подборов нет.")
-        return
-    rows = [[InlineKeyboardButton(text=f"✔ Куплено · {s.title}"[:60],
-                                  callback_data=cards.cb(cards.ACT_CONFIRM, client.slug, s.slug, CLOSE_BOUGHT)),
-             InlineKeyboardButton(text=f"✕ Закрыть · {s.title}"[:60],
-                                  callback_data=cards.cb(cards.ACT_CONFIRM, client.slug, s.slug, CLOSE_DROPPED))]
-            for s in active]
-    rows.append([InlineKeyboardButton(text="✖ Отмена", callback_data=cards.cb(cards.ACT_CANCEL))])
-    await message.answer(f"{client.short_name}: какой подбор закрыть?",
-                         reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+    searches = await run_blocking(actions.client_searches, client)
+    await send(message.chat.id, cards.client_fate_card(client, searches), topic_of(message))
 
 
 # ------------------------------------------------------------------ текст → агент (или ответ на вопрос бота)
@@ -762,11 +749,12 @@ async def cb_confirm(call: CallbackQuery, p: dict, chat_id: int, thread: int | N
     """Закрыть подбор: listing здесь несёт причину — bought или dropped."""
     reason = p["listing"] if p["listing"] in (CLOSE_BOUGHT, CLOSE_DROPPED) else CLOSE_DROPPED
     client = await run_blocking(actions.get_client, p["client"])
-    searches = await run_blocking(actions.client_searches, client, True)
-    targets = [s for s in searches if not p["search"] or s.slug == p["search"]]
     await _clear_buttons(call)
-    for s in targets:
-        await run_blocking(actions.close_search, client, s, reason)
+    if p["search"]:
+        s = await run_blocking(actions.get_search, client.slug, p["search"])
+        targets = [await run_blocking(actions.close_search, client, s, reason)]
+    else:
+        targets = await run_blocking(actions.close_client, client, reason)
     mark = "✓ куплено" if reason == CLOSE_BOUGHT else "✕ закрыт"
     names = ", ".join(f"«{s.title}»" for s in targets) or "—"
     client = await run_blocking(actions.get_client, client.slug)
@@ -782,12 +770,54 @@ async def cb_confirm(call: CallbackQuery, p: dict, chat_id: int, thread: int | N
 
 
 async def cb_pause_resume(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
-    status = SEARCH_PAUSED if p["action"] == cards.ACT_PAUSE else SEARCH_ACTIVE
     client = await run_blocking(actions.get_client, p["client"])
-    for s in await run_blocking(actions.client_searches, client):
-        if s.status in (SEARCH_ACTIVE, SEARCH_PAUSED):
-            await run_blocking(actions.set_search_status, client, s, status)
-    await call.message.answer(f"{client.short_name}: {'⏸ пауза' if status == SEARCH_PAUSED else '▶ возобновлён'}.")
+    await _clear_buttons(call)
+    if p["action"] == cards.ACT_PAUSE:
+        n = await run_blocking(actions.pause_client, client)
+        await call.message.answer(f"⏸ {client.short_name}: заморожен, подборов на паузе — {n}. Прогон не идёт, "
+                                  "книга и тема на месте. Вернуть — /resume в его теме или /clients.")
+    else:
+        n = await run_blocking(actions.resume_client, client)
+        if n == 0:
+            await call.message.answer(f"{client.short_name}: подборов на паузе нет. Если клиент в архиве — "
+                                      "заведи ему новый подбор в теме, он вернётся в работу.")
+        else:
+            await call.message.answer(f"▶ {client.short_name}: снова активен, подборов возобновлено — {n}.")
+
+
+async def cb_manage(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
+    client = await run_blocking(actions.get_client, p["client"])
+    searches = await run_blocking(actions.client_searches, client)
+    await send(chat_id, cards.client_fate_card(client, searches), thread)
+
+
+async def cb_delete(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
+    client = await run_blocking(actions.get_client, p["client"])
+    searches = await run_blocking(actions.client_searches, client)
+    await _clear_buttons(call)
+    await send(chat_id, cards.delete_confirm_card(client, searches), thread)
+
+
+async def cb_delete_confirm(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
+    client = await run_blocking(actions.get_client, p["client"])
+    await _clear_buttons(call)
+    result = await run_blocking(actions.delete_client, client)
+    text = (f"🗑 {client.name} удалён: подборов {result['searches']}, книга "
+            + ("в корзине Диска." if result["book_trashed"] else "в корзину не ушла — проверь Диск."))
+    if GROUP_ID is not None and result.get("topic_id") and thread != result["topic_id"]:
+        try:
+            await _bot.delete_forum_topic(chat_id=GROUP_ID, message_thread_id=result["topic_id"])
+            text += " Тема удалена."
+        except TelegramBadRequest as error:
+            log.warning("Тема не удалена: %s", error)
+            text += " Тему удалить не смог — убери руками."
+    await call.message.answer(text)
+    if GROUP_ID is not None and result.get("topic_id") and thread == result["topic_id"]:
+        # Ответили внутри удаляемой темы — теперь можно убрать и её
+        try:
+            await _bot.delete_forum_topic(chat_id=GROUP_ID, message_thread_id=result["topic_id"])
+        except TelegramBadRequest as error:
+            log.warning("Тема не удалена: %s", error)
 
 
 async def cb_clients(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
@@ -800,6 +830,7 @@ CALLBACKS = {
     cards.ACT_SENT: cb_sent, cards.ACT_SKIP: cb_skip, cards.ACT_SHOW_NEW: cb_show_new,
     cards.ACT_SHOW_PRICES: cb_show_prices, cards.ACT_REBUILD: cb_rebuild, cards.ACT_CONFIRM: cb_confirm,
     cards.ACT_PAUSE: cb_pause_resume, cards.ACT_RESUME: cb_pause_resume, cards.ACT_CLIENTS: cb_clients,
+    cards.ACT_MANAGE: cb_manage, cards.ACT_DELETE: cb_delete, cards.ACT_DELETE_CONFIRM: cb_delete_confirm,
 }
 
 
