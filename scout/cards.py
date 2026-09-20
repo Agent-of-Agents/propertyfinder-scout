@@ -115,13 +115,17 @@ def listing_card(client: Client, search: Search, row: dict, position: str = "") 
         lines.append(f"<i>{esc(row['comment'])}</i>")
     if row.get("url"):
         lines.append(f'<a href="{esc(row["url"])}">{esc(row["url"].split("//")[-1][:60])}</a>')
+    # 📩 — сразу объявление на PF: там кнопка WhatsApp с готовым текстом (шлюз PF закрыт
+    # для скриптов с 09.2026, см. память). «✔ Отправил» ставит дату в «Запрошено».
+    request = (Button(f"{ICON_REQ} WhatsApp на PF", url=row["url"]) if row.get("url")
+               else Button(f"{ICON_REQ} Запросить", cb(ACT_REQUEST, client.slug, search.slug, lid)))
     return Outgoing(
         text="\n".join(lines),
-        buttons=[[
-            Button(f"{ICON_OK} Одобрить", cb(ACT_APPROVE, client.slug, search.slug, lid)),
-            Button(f"{ICON_REQ} Запросить", cb(ACT_REQUEST, client.slug, search.slug, lid)),
-            Button("⏭", cb(ACT_SKIP, client.slug, search.slug, lid)),
-        ]],
+        buttons=[
+            [Button(f"{ICON_OK} Одобрить", cb(ACT_APPROVE, client.slug, search.slug, lid)), request,
+             Button("⏭", cb(ACT_SKIP, client.slug, search.slug, lid))],
+            [Button(f"{ICON_SENT} Отправил брокеру", cb(ACT_SENT, client.slug, search.slug, lid))],
+        ],
         photo_url=row.get("photo_url", ""),
         meta={"client": client.slug, "search": search.slug, "listing": lid},
     )
@@ -333,14 +337,13 @@ def whatsapp_fallback_card(client: Client, search: Search, row: dict, reason: st
     """Шлюз PF с сервера закрыт — WhatsApp жмёт Алексей на странице объявления."""
     lid = row.get("id", "")
     lines = [tagline(client, search),
-             f"<b>{esc(row.get('agent_name'))} · {esc(row.get('agency'))}</b>",
-             f"{esc(row.get('bedrooms'))}BR · {esc(row.get('size_m2'))} м² · {money(row.get('price'))}",
-             f"⚠️ {esc(reason)}",
-             "Открой объявление и нажми там кнопку WhatsApp — текст PF подставится сам, не редактируй его. "
-             "Потом вернись и нажми «Отправил»."]
+             f"<b>{esc(row.get('agent_name'))} · {esc(row.get('agency'))}</b> · {money(row.get('price'))} AED",
+             "На PF нажми WhatsApp — текст подставится сам, не редактируй. Потом «Отправил»."]
+    if reason:
+        lines.append(f"⚠️ {esc(reason)}")
     rows = []
     if row.get("url"):
-        rows.append([Button("🔗 Открыть объявление на PF", url=row["url"])])
+        rows.append([Button("📩 WhatsApp на PF", url=row["url"])])
     rows.append([Button(f"{ICON_SENT} Отправил", cb(ACT_SENT, client.slug, search.slug, lid)),
                  Button("✖ Передумал", cb(ACT_CANCEL, client.slug, search.slug, lid))])
     return Outgoing("\n".join(lines), rows, meta={"client": client.slug, "search": search.slug, "listing": lid})

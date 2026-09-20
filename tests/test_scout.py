@@ -110,7 +110,8 @@ def test_listing_card_has_tag_and_three_buttons(client_and_search):
     assert card.text.startswith("<code>Иванова · Marina Shores 2BR · 1 из 3</code>")
     assert "3 850 000 AED" in card.text and "-12 % к медиане" in card.text and "🇷🇺" in card.text
     labels = [b.label for b in card.buttons[0]]
-    assert labels == ["✅ Одобрить", "📩 Запросить", "⏭"]
+    assert labels == ["✅ Одобрить", "📩 WhatsApp на PF", "⏭"] and card.buttons[0][1].url == row["url"]
+    assert card.buttons[1][0].label == "✔ Отправил брокеру"
     assert card.meta == {"client": "ivanova", "search": "marina-shores-2br", "listing": "PF-1"}
 
 

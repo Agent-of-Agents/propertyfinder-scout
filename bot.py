@@ -797,22 +797,15 @@ async def cb_approve(call: CallbackQuery, p: dict, chat_id: int, thread: int | N
 
 
 async def cb_request(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
-    from lib.whatsapp import LeadRequestError
-
+    # Шлюз PF для скриптов закрыт (WAF, 09.2026) — сразу ссылка на объявление, без попыток
     client = await run_blocking(actions.get_client, p["client"])
     search = await run_blocking(actions.get_search, p["client"], p["search"])
+    row = await run_blocking(actions.raw_row, search, p["listing"])
     try:
-        result = await run_blocking(actions.request_broker, client, search, p["listing"])
-    except LeadRequestError as error:
-        # Шлюз PF с сервера закрыт (CloudFront 403) — даём ссылку на объявление, галочку ставим
-        row = await run_blocking(actions.raw_row, search, p["listing"])
-        try:
-            await run_blocking(actions.SheetRows(client, search).write, p["listing"], {"📩 Запросить": True}, True)
-        except Exception as mark_error:  # noqa: BLE001
-            log.warning("Галочка 📩 не поставлена: %s", mark_error)
-        await send(chat_id, cards.whatsapp_fallback_card(client, search, row, str(error)), thread)
-        return
-    await send(chat_id, cards.whatsapp_card(client, search, result["row"], result["link"]), thread)
+        await run_blocking(actions.SheetRows(client, search).write, p["listing"], {"📩 Запросить": True}, True)
+    except Exception as mark_error:  # noqa: BLE001
+        log.warning("Галочка 📩 не поставлена: %s", mark_error)
+    await send(chat_id, cards.whatsapp_fallback_card(client, search, row, ""), thread)
 
 
 async def cb_sent(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
@@ -820,9 +813,9 @@ async def cb_sent(call: CallbackQuery, p: dict, chat_id: int, thread: int | None
     search = await run_blocking(actions.get_search, p["client"], p["search"])
     stamp = await run_blocking(actions.mark_sent, client, search, p["listing"])
     await run_blocking(reminders.touch, client)
-    await _clear_buttons(call)
-    await call.message.answer(f"Записал: <b>Запрошено {stamp}</b>. Когда брокер пришлёт планировку — "
-                              "ответь фотографией на карточку объекта.", parse_mode=ParseMode.HTML)
+    row = await run_blocking(actions.raw_row, search, p["listing"])
+    await call.message.answer(f"{cards.tagline(client, search)}✔ <b>Запрошено {stamp}</b> · {cards.esc(row.get('agent_name') or '')}. "
+                              "Планировку от брокера — ответом на карточку.", parse_mode=ParseMode.HTML)
 
 
 async def cb_skip(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
