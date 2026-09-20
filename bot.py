@@ -417,11 +417,24 @@ async def handle_text(message: Message, text: str) -> None:
         await _finish_dld(message, await resolve_context(message), address, card)
         return
 
-    # Ждём от Алексея цену? Тогда это ответ боту, не агенту.
+    # Ждём от Алексея цену или комментарий? Тогда это ответ боту, не агенту.
     pending = await run_blocking(actions.pop_pending, f"{message.chat.id}|{thread or 0}")
     if pending and pending.get("kind") == "price":
         await _handle_price_answer(message, pending, text)
         return
+    if pending and pending.get("kind") == "comment":
+        await _save_comment(message, pending, text)
+        return
+    if pending:                                              # другой тип ожидания — не терять
+        await run_blocking(actions.set_pending, f"{message.chat.id}|{thread or 0}", pending)
+
+    # Ответ (свайп) на карточку объекта голосом или текстом — заметка по этому объекту
+    if message.reply_to_message:
+        address = await run_blocking(actions.recall_message,
+                                     f"m|{message.chat.id}|{message.reply_to_message.message_id}")
+        if address and address.get("listing") and address.get("kind") != "dld":
+            await _save_comment(message, address, text)
+            return
 
     client = await resolve_context(message)
     if client is not None:
@@ -464,6 +477,24 @@ async def _handle_price_answer(message: Message, pending: dict, text: str) -> No
     result["listing"] = pending["listing"]
     await run_blocking(reminders.touch, client)
     await send(message.chat.id, cards.pdf_card(client, search, result), topic_of(message))
+
+
+async def _save_comment(message: Message, address: dict, text: str) -> None:
+    """Голос/текст Алексея → «Мой комментарий» строки объекта, с датой."""
+    client = await run_blocking(actions.get_client, address["client"])
+    search = await run_blocking(actions.get_search, address["client"], address["search"])
+    try:
+        stamp = await run_blocking(actions.add_comment, client, search, address["listing"], text)
+    except Exception as error:  # noqa: BLE001
+        log.exception("Комментарий")
+        await message.answer(f"⚠️ Не записал: {type(error).__name__}: {str(error)[:200]}")
+        return
+    await run_blocking(reminders.touch, client)
+    try:
+        row = await run_blocking(actions.raw_row, search, address["listing"])
+    except actions.NotFound:
+        row = {"id": address["listing"]}
+    await send(message.chat.id, cards.comment_saved_card(client, search, row, text, stamp), topic_of(message))
 
 
 # ------------------------------------------------------------------ фото: планировка от брокера
@@ -796,6 +827,19 @@ async def cb_approve(call: CallbackQuery, p: dict, chat_id: int, thread: int | N
     await send(chat_id, cards.ask_price_card(client, search, row), thread)
 
 
+async def cb_comment(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
+    """«💬 Комментарий»: следующее голосовое/текст в теме → «Мой комментарий» этой строки."""
+    client = await run_blocking(actions.get_client, p["client"])
+    search = await run_blocking(actions.get_search, p["client"], p["search"])
+    try:
+        row = await run_blocking(actions.raw_row, search, p["listing"])
+    except actions.NotFound:
+        row = {"id": p["listing"]}
+    await run_blocking(actions.set_pending, f"{chat_id}|{thread or 0}",
+                       {"kind": "comment", "client": client.slug, "search": search.slug, "listing": p["listing"]})
+    await send(chat_id, cards.ask_comment_card(client, search, row), thread)
+
+
 async def cb_request(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
     # Шлюз PF для скриптов закрыт (WAF, 09.2026) — сразу ссылка на объявление, без попыток
     client = await run_blocking(actions.get_client, p["client"])
@@ -994,6 +1038,7 @@ CALLBACKS = {
     cards.ACT_REM_DONE: cb_reminder, cards.ACT_REM_SNOOZE3: cb_reminder, cards.ACT_REM_SNOOZE7: cb_reminder,
     cards.ACT_REM_CANCEL: cb_reminder,
     cards.ACT_DLD_QUEUE: cb_dld_queue, cards.ACT_DLD_PICK: cb_dld_pick,
+    cards.ACT_COMMENT: cb_comment,
 }
 
 

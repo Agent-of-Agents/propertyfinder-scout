@@ -605,6 +605,25 @@ def mark_sent(client: Client, search: Search, listing_id: str, store: Store | No
     return stamp
 
 
+def add_comment(client: Client, search: Search, listing_id: str, text: str) -> str:
+    """Заметка Алексея по объекту (голос/текст из Telegram) → «Мой комментарий», с датой, дописывая.
+
+    Это его колонка: пишем только по его действию (кнопка 💬 или ответ на карточку),
+    поэтому allow_owner. Старый текст не затираем — новая запись сверху.
+    """
+    text = " ".join((text or "").split())
+    if not text:
+        raise ValueError("Пустой комментарий")
+    view = SheetRows(client, search)
+    n = view.row_number(listing_id)
+    current = view.cell(view.rows[n - 2], "Мой комментарий")
+    stamp = dt.date.today().strftime("%d.%m")
+    line = f"{stamp} · {text}"
+    value = f"{line}\n{current}" if current else line
+    view.write(listing_id, {"Мой комментарий": value}, allow_owner=True)
+    return stamp
+
+
 def cancel_request(client: Client, search: Search, listing_id: str) -> None:
     SheetRows(client, search).write(listing_id, {"📩 Запросить": False}, allow_owner=True)
 

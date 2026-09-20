@@ -113,6 +113,29 @@ def test_listing_card_has_tag_and_three_buttons(client_and_search):
     assert labels == ["✅ Одобрить", "📩 WhatsApp на PF", "⏭"] and card.buttons[0][1].url == row["url"]
     assert card.buttons[1][0].label == "✔ Отправил брокеру"
     assert card.meta == {"client": "ivanova", "search": "marina-shores-2br", "listing": "PF-1"}
+    assert card.buttons[1][1].label == "💬 Комментарий"
+    assert cards.parse_cb(card.buttons[1][1].data)["action"] == cards.ACT_COMMENT
+
+
+def test_add_comment_appends_with_date(client_and_search, monkeypatch):
+    """Голос/текст Алексея → «Мой комментарий»: с датой, новое сверху, старое не затирается."""
+    client, search = client_and_search
+    written = {}
+    class FakeSheet:
+        header = ["listing_id", "Мой комментарий"]
+        rows = [["PF-1", "10.09 · брокер обещал скинуть план"]]
+        def __init__(self, *a, **k): pass
+        def row_number(self, lid): return 2
+        def cell(self, row, name): return row[self.header.index(name)]
+        def write(self, lid, values, allow_owner=False):
+            assert allow_owner, "колонка Алексея — только по его действию"
+            written[lid] = values
+    monkeypatch.setattr(actions, "SheetRows", FakeSheet)
+    stamp = actions.add_comment(client, search, "PF-1", "  хороший вид,\nно шумно  ")
+    value = written["PF-1"]["Мой комментарий"]
+    assert value.startswith(f"{stamp} · хороший вид, но шумно\n10.09 · брокер")
+    saved = cards.comment_saved_card(client, search, {"id": "PF-1", "agent_name": "X", "price": 1}, "но шумно", stamp)
+    assert "Записал в «Мой комментарий»" in saved.text and saved.meta["listing"] == "PF-1"
 
 
 def test_draft_cards(client_and_search):

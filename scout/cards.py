@@ -27,7 +27,8 @@ ACT_PAUSE, ACT_RESUME, ACT_CLIENTS = "ps", "rs", "cl"
 ACT_REBUILD = "rb"
 ACT_DELETE, ACT_DELETE_CONFIRM, ACT_MANAGE = "dl", "dd", "mg"
 ACT_REM_DONE, ACT_REM_SNOOZE3, ACT_REM_SNOOZE7, ACT_REM_CANCEL = "rd", "r3", "r7", "rx"   # напоминания
-ACT_DLD_QUEUE, ACT_DLD_PICK = "dq", "dp"                                                   # карты DLD      # удалить полностью: карточка → подтверждение
+ACT_DLD_QUEUE, ACT_DLD_PICK = "dq", "dp"
+ACT_COMMENT = "cm"                                                                         # 💬 заметка по объекту                                                   # карты DLD      # удалить полностью: карточка → подтверждение
 
 
 @dataclass
@@ -124,7 +125,8 @@ def listing_card(client: Client, search: Search, row: dict, position: str = "") 
         buttons=[
             [Button(f"{ICON_OK} Одобрить", cb(ACT_APPROVE, client.slug, search.slug, lid)), request,
              Button("⏭", cb(ACT_SKIP, client.slug, search.slug, lid))],
-            [Button(f"{ICON_SENT} Отправил брокеру", cb(ACT_SENT, client.slug, search.slug, lid))],
+            [Button(f"{ICON_SENT} Отправил брокеру", cb(ACT_SENT, client.slug, search.slug, lid)),
+             Button("💬 Комментарий", cb(ACT_COMMENT, client.slug, search.slug, lid))],
         ],
         photo_url=row.get("photo_url", ""),
         meta={"client": client.slug, "search": search.slug, "listing": lid},
@@ -155,6 +157,7 @@ def project_card(client: Client, search: Search, row: dict, position: str = "") 
     if row.get("brochure_url"):
         buttons.append(Button(f"{ICON_PDF} Брошюра", url=row["brochure_url"]))
     buttons.append(Button("⏭", cb(ACT_SKIP, client.slug, search.slug, lid)))
+    buttons.append(Button("💬", cb(ACT_COMMENT, client.slug, search.slug, lid)))
     return Outgoing(text="\n".join(lines), buttons=[buttons], photo_url=row.get("photo_url", ""),
                     meta={"client": client.slug, "search": search.slug, "listing": lid})
 
@@ -347,6 +350,24 @@ def whatsapp_fallback_card(client: Client, search: Search, row: dict, reason: st
     rows.append([Button(f"{ICON_SENT} Отправил", cb(ACT_SENT, client.slug, search.slug, lid)),
                  Button("✖ Передумал", cb(ACT_CANCEL, client.slug, search.slug, lid))])
     return Outgoing("\n".join(lines), rows, meta={"client": client.slug, "search": search.slug, "listing": lid})
+
+
+def ask_comment_card(client: Client, search: Search, row: dict) -> Outgoing:
+    """«💬 Комментарий»: ждём голосовое или текст — запишем в «Мой комментарий»."""
+    lines = [tagline(client, search),
+             f"<b>{esc(row.get('agent_name') or row.get('project') or '')}</b> · {money(row.get('price'))}",
+             "Слушаю: голосовое или текст следующим сообщением — запишу в <b>«Мой комментарий»</b> этой строки."]
+    return Outgoing("\n".join(lines), [[Button("✖ Отмена", cb(ACT_CANCEL, client.slug, search.slug, row.get("id", "")))]],
+                    meta={"client": client.slug, "search": search.slug, "listing": row.get("id", "")})
+
+
+def comment_saved_card(client: Client, search: Search, row: dict, text: str, stamp: str) -> Outgoing:
+    lines = [tagline(client, search),
+             f"💬 <b>Записал в «Мой комментарий»</b> · {esc(row.get('agent_name') or row.get('project') or '')}"
+             f" · {money(row.get('price'))}",
+             f"<i>{esc(stamp)} · {esc(text)}</i>"]
+    return Outgoing("\n".join(lines), [[Button("💬 Ещё", cb(ACT_COMMENT, client.slug, search.slug, row.get("id", "")))]],
+                    meta={"client": client.slug, "search": search.slug, "listing": row.get("id", "")})
 
 
 def ask_price_card(client: Client, search: Search, row: dict) -> Outgoing:
