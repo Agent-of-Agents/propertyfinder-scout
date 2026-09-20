@@ -26,7 +26,8 @@ ACT_CONFIRM, ACT_CLOSE_OBJECT = "ok", "co"
 ACT_PAUSE, ACT_RESUME, ACT_CLIENTS = "ps", "rs", "cl"
 ACT_REBUILD = "rb"
 ACT_DELETE, ACT_DELETE_CONFIRM, ACT_MANAGE = "dl", "dd", "mg"
-ACT_REM_DONE, ACT_REM_SNOOZE3, ACT_REM_SNOOZE7, ACT_REM_CANCEL = "rd", "r3", "r7", "rx"   # напоминания      # удалить полностью: карточка → подтверждение
+ACT_REM_DONE, ACT_REM_SNOOZE3, ACT_REM_SNOOZE7, ACT_REM_CANCEL = "rd", "r3", "r7", "rx"   # напоминания
+ACT_DLD_QUEUE, ACT_DLD_PICK = "dq", "dp"                                                   # карты DLD      # удалить полностью: карточка → подтверждение
 
 
 @dataclass
@@ -228,6 +229,7 @@ def first_collection_card(client: Client, search: Search, report: dict, sheet_li
     return Outgoing("\n".join(lines), [[
         Button("📊 Книга", url=sheet_link),
         Button(f"{ICON_NEW} Карточки", cb(ACT_SHOW_NEW, client.slug, search.slug)),
+        Button("🪪 DLD", cb(ACT_DLD_QUEUE, client.slug, search.slug)),
     ]])
 
 
@@ -255,6 +257,7 @@ def search_digest(client: Client, search: Search, rep: dict, sheet_link: str) ->
     if rep.get("price"):
         buttons.append(Button(f"{ICON_PRICE} Цены", cb(ACT_SHOW_PRICES, client.slug, search.slug)))
     buttons.append(Button("📊 Лист", url=sheet_link))
+    buttons.append(Button("🪪 DLD", cb(ACT_DLD_QUEUE, client.slug, search.slug)))
     return Outgoing("\n".join(lines), [buttons])
 
 
@@ -443,6 +446,49 @@ def followup_card(client: Client, silent_days: int, news: str, searches_line: st
         [Button("⏰ Напомнить через неделю", cb(ACT_REM_SNOOZE7, f"fu:{client.slug}")),
          Button("⏸ Заморозить", cb(ACT_PAUSE, client.slug))],
     ])
+
+
+def dld_link_card(client: Client, search: Search, item: dict, position: str = "") -> Outgoing:
+    """Одна ссылка на карту DLD. Ответ на это сообщение скриншотом или текстом карты — запись в лист."""
+    lines = [tagline(client, search, position),
+             f"🪪 <b>{esc(item.get('agent') or '—')}</b> · {esc(item.get('agency') or '')}".rstrip(" ·"),
+             f"{money(item.get('price'))} AED · {esc(item.get('building') or '')}".rstrip(" ·")]
+    if item.get("permit_url"):
+        lines.append("Открой карту, сделай <b>скриншот</b> и ответь им на это сообщение. Или выдели текст карты и вставь ответом.")
+    else:
+        lines.append("⚠️ У объявления нет ссылки на карту DLD — разрешение не указано.")
+    rows = []
+    if item.get("permit_url"):
+        rows.append([Button("🪪 Открыть карту DLD", url=item["permit_url"])])
+    if item.get("url"):
+        rows.append([Button("🔗 Объявление", url=item["url"])])
+    return Outgoing("\n".join(lines), rows,
+                    meta={"client": client.slug, "search": search.slug, "listing": item["listing_id"], "kind": "dld"})
+
+
+def dld_written_card(client: Client, search: Search, result: dict, agent: str) -> Outgoing:
+    card = result.get("card", {})
+    bits = []
+    if card.get("size_sqm"):
+        bits.append(f"<b>{card['size_sqm']:.2f} м²</b>")
+    if card.get("broker_mobile"):
+        bits.append(f"📱 {esc(card['broker_mobile'])}")
+    if card.get("broker_email"):
+        bits.append(f"✉️ {esc(card['broker_email'])}")
+    if card.get("permit_until"):
+        bits.append(f"разрешение до {esc(card['permit_until'])}")
+    lines = [tagline(client, search), f"🪪 Записано · <b>{esc(agent)}</b>", " · ".join(bits) or "поля не распознаны"]
+    if result.get("dupes"):
+        lines.append(f"✔ Та же квартира ещё у {len(result['dupes'])} — отмечено в «Дубли»")
+    return Outgoing("\n".join(lines))
+
+
+def dld_pick_card(client: Client, search: Search, candidates: list[dict], token: str) -> Outgoing:
+    """Карта пришла без ответа на сообщение и не сошлась однозначно — спросим, чья."""
+    rows = [[Button(f"{c.get('agent') or c['listing_id']} · {money(c.get('price'))}"[:60],
+                    cb(ACT_DLD_PICK, client.slug, search.slug, f"{token}:{c['listing_id']}"))] for c in candidates[:8]]
+    rows.append([Button("✖ Отмена", cb(ACT_CANCEL))])
+    return Outgoing(tagline(client, search) + "К какому объекту эта карта DLD?", rows)
 
 
 def confirm_card(text: str, action: str, client: str = "", search: str = "", listing: str = "") -> Outgoing:

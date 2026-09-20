@@ -371,3 +371,54 @@ def test_quiet_clients_rule(store):
     assert [(c.slug, days) for c, days in result] == [("b", 13), ("e", 4)]
     reminders.touch(silent, store)
     assert store.get("scout_clients", "b")["last_touch"] == dt.date.today().isoformat()
+
+
+def test_dld_parse_match_apply(store, client_and_search, monkeypatch):
+    from scout import dld
+
+    client, search = client_and_search
+    text = """Real Estate Permit Card
+Transaction Number
+12345
+End Date
+04/03/2027
+Name
+Samvel Kazarian
+Email
+tony@example.com
+Mobile
+0565880812
+Building Name
+MARINA SHORES
+Property Size(Sqm)
+110.70
+"""
+    card = dld.ingest_text(text)
+    assert card["verified"] and card["size_sqm"] == 110.7 and card["broker_mobile"] == "+971565880812"
+    assert card["permit_until"] == "04/03/2027" and card["broker_name"] == "Samvel Kazarian"
+    cands = [{"listing_id": "PF-1", "agent": "Samvel Kazarian", "building": "Marina Shores", "size_m2": 110.7},
+             {"listing_id": "PF-2", "agent": "Olga Ivanova", "building": "Marina Shores", "size_m2": 83.5}]
+    assert dld.match_listing(card, cands) == "PF-1"
+    assert dld.match_listing({"broker_name": "Nobody"}, cands) is None
+    assert dld.ingest_text("random text") == {}
+    assert dld.ingest_text("Real Estate Permit Card\nListing not exist") == {"verified": False}
+    assert "110.70 м²" in dld.summary_line(card) and "+971565880812" in dld.summary_line(card)
+
+    # запись: подменяем лист — проверяем колонки и дубли ✔ по двум картам с одной площадью
+    written = {}
+    class FakeSheet:
+        def __init__(self, *a, **k): pass
+        def write(self, lid, values, allow_owner=False): written[lid] = values
+    monkeypatch.setattr(actions, "SheetRows", FakeSheet)
+    store.put(RAW, search.key, {"rows": [
+        {"id": "PF-1", "price": 3_090_000, "agent_name": "Samvel Kazarian", "url": "u1"},
+        {"id": "PF-3", "price": 3_250_000, "agent_name": "Aram Pogosyan", "url": "u3"}]})
+    r1 = dld.apply_card(client, search, "PF-1", card, store)
+    assert written["PF-1"]["DLD м²"] == 110.7 and written["PF-1"]["Тел. брокера DLD"] == "+971565880812"
+    assert r1["dupes"] == []
+    card2 = dict(card, broker_name="Aram Pogosyan", broker_mobile="0544433811", permit_number="777")
+    r3 = dld.apply_card(client, search, "PF-3", card2, store)
+    assert r3["dupes"] == ["PF-1"]
+    assert written["PF-3"]["Дубли"].startswith("✔ 3 090 000 AED · Samvel Kazarian")
+    assert written["PF-1"]["Дубли"].startswith("✔ 3 250 000 AED · Aram Pogosyan")
+    assert dld.queue.__doc__                              # очередь требует Google — здесь не вызываем

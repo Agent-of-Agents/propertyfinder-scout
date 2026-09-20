@@ -169,4 +169,31 @@ def pf_probe(url: str) -> str:
     return f"Объявлений: {total}. Примеры: " + " | ".join(t for t in titles if t)
 
 
-TOOLS = [sheet_rows, show_new, show_objects, object_details, pf_probe]
+@tool
+def dld_queue(client: str, search: str = "", limit: int = 10) -> str:
+    """Прислать Алексею ссылки на карты DLD по объектам подбора — для контактов брокеров и точной площади.
+
+    Карта DLD за капчей, читает её Алексей в своём браузере: открывает ссылку, отвечает
+    скриншотом — бот записывает телефон, email, площадь, срок разрешения и дубли ✔.
+    Сначала одобренные и запрошенные, потом по порядку листа; уже проверенные пропускаются.
+
+    Args:
+        client: slug или фамилия клиента.
+        search: slug подбора; пусто — единственный активный.
+        limit: сколько ссылок за раз, 1–20.
+
+    Returns:
+        Сколько ссылок отправлено.
+    """
+    from scout import dld
+
+    c, s = _pair(client, search)
+    items = dld.queue(c, s, limit=max(1, min(limit, 20)))
+    for i, item in enumerate(items, start=1):
+        outbox.push(cards.dld_link_card(c, s, item, position=f"{i} из {len(items)}"))
+    if not items:
+        return "Все объекты подбора уже с картами DLD или ссылок на карты нет."
+    return f"Отправлено ссылок на карты DLD: {len(items)}. Алексей отвечает скриншотом на каждое."
+
+
+TOOLS = [sheet_rows, show_new, show_objects, object_details, pf_probe, dld_queue]

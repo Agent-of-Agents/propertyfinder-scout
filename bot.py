@@ -46,7 +46,7 @@ from aiogram.utils.chat_action import ChatActionSender
 from agent import build_agent
 from config import AgentConfig
 from memory import build_checkpointer
-from scout import actions, cards, outbox, reminders, runner, transcribe
+from scout import actions, cards, dld, outbox, reminders, runner, transcribe
 from scout.cards import Outgoing
 from scout.models import CLOSE_BOUGHT, CLOSE_DROPPED, MARKET_SECONDARY, SEARCH_ACTIVE, SEARCH_PAUSED
 from scout.store import META, STATES, get_store
@@ -408,6 +408,15 @@ async def handle_text(message: Message, text: str) -> None:
     """Текст от Алексея — набранный или расшифрованный из голосового."""
     thread = topic_of(message)
 
+    if "Real Estate Permit Card" in text:                      # вставленный текст карты DLD
+        address = None
+        if message.reply_to_message:
+            address = await run_blocking(actions.recall_message,
+                                         f"m|{message.chat.id}|{message.reply_to_message.message_id}")
+        card = dld.ingest_text(text)
+        await _finish_dld(message, await resolve_context(message), address, card)
+        return
+
     # Ждём от Алексея цену? Тогда это ответ боту, не агенту.
     pending = await run_blocking(actions.pop_pending, f"{message.chat.id}|{thread or 0}")
     if pending and pending.get("kind") == "price":
@@ -471,6 +480,10 @@ async def on_photo(message: Message) -> None:
     if message.reply_to_message:
         address = await run_blocking(actions.recall_message,
                                      f"m|{message.chat.id}|{message.reply_to_message.message_id}")
+    caption = (message.caption or "").lower()
+    if (address and address.get("kind") == "dld") or "dld" in caption or "длд" in caption:
+        await _handle_dld_image(message, client, address)
+        return
     if address is None and client is not None:
         address = await run_blocking(_match_by_hint, client, message.caption or "")
     if address is None:
@@ -501,6 +514,93 @@ async def on_photo(message: Message) -> None:
         await message.answer(f"{what} приложена к объекту {address['listing']}"
                              + (" и лежит в папке объекта на Диске" if result.get("folder_link") else "")
                              + ". Презентации ещё нет — соберу, когда одобришь с ценой.")
+
+
+async def _handle_dld_image(message: Message, client, address: dict | None) -> None:
+    """Скриншот карты DLD → поля через модель → лист."""
+    file = message.photo[-1] if message.photo else message.document
+    mime = "image/png" if (message.document and "png" in (message.document.mime_type or "")) else "image/jpeg"
+    tmp = Path(tempfile.gettempdir()) / f"dld_{file.file_unique_id}"
+    await message.bot.download(file, destination=tmp)
+    async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id, message_thread_id=topic_of(message)):
+        try:
+            card = await run_blocking(dld.extract_from_image, tmp.read_bytes(), _config.model, mime)
+        except Exception as error:  # noqa: BLE001
+            log.exception("DLD: распознавание")
+            await message.answer(f"⚠️ Карту не прочитал: {model_error_text(error)}")
+            return
+        finally:
+            tmp.unlink(missing_ok=True)
+    await _finish_dld(message, client, address, card)
+
+
+async def _finish_dld(message: Message, client, address: dict | None, card: dict) -> None:
+    thread = topic_of(message)
+    if not card or card.get("verified") is False:
+        await message.answer("Это не похоже на карту DLD «Real Estate Permit Card» — или объявление в DLD не подтверждено.")
+        return
+    if address and address.get("listing"):
+        client = client or await run_blocking(actions.get_client, address["client"])
+        search = await run_blocking(actions.get_search, address["client"], address["search"])
+        listing_id = address["listing"]
+    else:
+        if client is None:
+            await message.answer("Пришли карту в теме клиента — или ответом на сообщение со ссылкой на карту.")
+            return
+        searches = await run_blocking(actions.client_searches, client, True)
+        candidates, search = [], None
+        for s in searches:
+            if s.market != MARKET_SECONDARY:
+                continue
+            for r in await run_blocking(actions.raw_rows, s):
+                candidates.append({"listing_id": r["id"], "agent": r.get("agent_name"), "price": r.get("price"),
+                                   "building": r.get("building"), "size_m2": r.get("size_m2"), "search": s})
+        match = dld.match_listing(card, candidates)
+        if not match:
+            token = uuid.uuid4().hex[:8]
+            await run_blocking(actions.set_pending, f"dld|{token}", {"kind": "dld", "card": card})
+            near = [c for c in candidates if c.get("agent") and (card.get("broker_name") or "").split()[:1]
+                    and (card["broker_name"].split()[0].lower() in c["agent"].lower())] or candidates[:8]
+            s0 = near[0]["search"] if near else searches[0]
+            await send(message.chat.id, cards.dld_pick_card(client, s0, near, token), thread)
+            return
+        listing_id = match
+        search = next(c["search"] for c in candidates if c["listing_id"] == match)
+    try:
+        result = await run_blocking(dld.apply_card, client, search, listing_id, card)
+    except Exception as error:  # noqa: BLE001
+        log.exception("DLD: запись")
+        await message.answer(f"⚠️ В лист не записал: {error}")
+        return
+    row = await run_blocking(actions.raw_row, search, listing_id)
+    await run_blocking(reminders.touch, client)
+    await send(message.chat.id, cards.dld_written_card(client, search, result, row.get("agent_name") or listing_id), thread)
+
+
+async def cb_dld_queue(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
+    client = await run_blocking(actions.get_client, p["client"])
+    search = await run_blocking(actions.get_search, p["client"], p["search"])
+    await call.message.answer("🪪 Собираю ссылки на карты DLD…")
+    items = await run_blocking(dld.queue, client, search, 10)
+    if not items:
+        await send(chat_id, cards.plain(f"{cards.tagline(client, search)}Все объекты уже с картами DLD или ссылок на карты нет."), thread)
+        return
+    for i, item in enumerate(items, start=1):
+        await send(chat_id, cards.dld_link_card(client, search, item, position=f"{i} из {len(items)}"), thread)
+
+
+async def cb_dld_pick(call: CallbackQuery, p: dict, chat_id: int, thread: int | None) -> None:
+    token, listing_id = p["listing"].split(":", 1)
+    pend = await run_blocking(actions.pop_pending, f"dld|{token}")
+    await _clear_buttons(call)
+    if not pend:
+        await call.message.answer("Карта уже обработана или устарела — пришли скриншот ещё раз.")
+        return
+    client = await run_blocking(actions.get_client, p["client"])
+    search = await run_blocking(actions.get_search, p["client"], p["search"])
+    result = await run_blocking(dld.apply_card, client, search, listing_id, pend["card"])
+    row = await run_blocking(actions.raw_row, search, listing_id)
+    await send(chat_id, cards.dld_written_card(client, search, result, row.get("agent_name") or listing_id), thread)
 
 
 def _match_by_hint(client, hint: str) -> dict | None:
@@ -900,6 +1000,7 @@ CALLBACKS = {
     cards.ACT_MANAGE: cb_manage, cards.ACT_DELETE: cb_delete, cards.ACT_DELETE_CONFIRM: cb_delete_confirm,
     cards.ACT_REM_DONE: cb_reminder, cards.ACT_REM_SNOOZE3: cb_reminder, cards.ACT_REM_SNOOZE7: cb_reminder,
     cards.ACT_REM_CANCEL: cb_reminder,
+    cards.ACT_DLD_QUEUE: cb_dld_queue, cards.ACT_DLD_PICK: cb_dld_pick,
 }
 
 
