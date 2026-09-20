@@ -1,11 +1,11 @@
 """Ежедневная сверка таблицы клиента с рынком.
 
 Правила, согласованные с Алексеем:
-  - новый объект       → строка вставляется СВЕРХУ, голубая заливка, 🆕 в комментарии
-  - изменилась цена    → обновить цену и производные, оранжевая заливка, 💰 было → стало
+  - новый объект       → строка вставляется СВЕРХУ, 🆕 в комментарии (без заливки — правило 20.09)
+  - изменилась цена    → обновить цену и производные, 💰 было → стало (без заливки)
   - изменился заголовок→ пересчитать вид/этаж, пометить
   - сменился агент     → обновить брокера, языки, балл 🇷🇺; порядок строк не трогать
-  - пропал из выдачи   → на второй день подряд: серая заливка, зачёркивание, ⚰️ снято
+  - пропал из выдачи   → на второй день подряд: ⚰️ снято в комментарии (без заливки и зачёркивания)
   - НИКОГДА не удалять строки и не писать в колонки Алексея
 
 Якорь строки — listing_id в колонке A. Индексы строк не хранятся:
@@ -191,11 +191,14 @@ def system_values(row: dict, delta: float | None, comment: str) -> dict[str, obj
 # ---------------------------------------------------------------- применение
 
 def _fill(view: SheetView, row_number: int, color: dict, strike: bool | None = None) -> dict:
-    fmt: dict = {"backgroundColor": color}
-    fields = "userEnteredFormat.backgroundColor"
-    if strike is not None:
-        fmt["textFormat"] = {"strikethrough": strike}
-        fields += ",userEnteredFormat.textFormat.strikethrough"
+    """Строгий документ (правило Алексея 20.09.2026): строки не раскрашиваем и не зачёркиваем.
+
+    Голубые «новые», оранжевые «цена изменилась», серые «снято» — отменены. Что случилось
+    с объектом, читается в «Комментарии системы» (🆕 💰 ⚰️). Функция оставлена, чтобы
+    старые вызовы очищали фон до белого — так уходят и прежние заливки.
+    """
+    fmt: dict = {"backgroundColor": COLOR_NONE, "textFormat": {"strikethrough": False}}
+    fields = "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.strikethrough"
     return {
         "repeatCell": {
             "range": {"sheetId": view.sheet_id, "startRowIndex": row_number - 1,
@@ -393,6 +396,12 @@ def run(client: dict, fresh: list[dict], state_path: Path, today: dt.date | None
 
     if updates:
         sheets.update_ranges(view.spreadsheet_id, updates)
+    # Старые заливки (голубые/оранжевые/серые строки) вычищаем одним запросом на всё тело листа
+    formats.append({"repeatCell": {
+        "range": {"sheetId": view.sheet_id, "startRowIndex": 1, "endRowIndex": max(2, len(view.rows) + 1),
+                  "startColumnIndex": 0, "endColumnIndex": len(view.header)},
+        "cell": {"userEnteredFormat": {"backgroundColor": COLOR_NONE, "textFormat": {"strikethrough": False}}},
+        "fields": "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.strikethrough"}})
     if formats:
         sheets.batch_update(view.spreadsheet_id, formats)
 

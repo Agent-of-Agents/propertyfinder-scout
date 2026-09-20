@@ -34,12 +34,12 @@ WHITE = {"red": 1.0, "green": 1.0, "blue": 1.0}
 
 
 def _mark(view, row_number: int, removed: bool) -> dict:
-    """Строгий документ: без заливок. Выбывшие — серым с зачёркиванием, остальные — как есть."""
+    """Строгий документ (правило Алексея 20.09.2026): без заливок и зачёркиваний; выбывшие — ⚰️ в комментарии."""
     return {"repeatCell": {
         "range": {"sheetId": view.sheet_id, "startRowIndex": row_number - 1, "endRowIndex": row_number,
                   "startColumnIndex": 0, "endColumnIndex": len(view.header)},
         "cell": {"userEnteredFormat": {"backgroundColor": WHITE,
-                                       "textFormat": {"strikethrough": removed, "foregroundColor": GREY if removed else INK}}},
+                                       "textFormat": {"strikethrough": False, "foregroundColor": INK}}},
         "fields": "userEnteredFormat(backgroundColor,textFormat.strikethrough,textFormat.foregroundColor)"}}
 HEADER_FG = {"red": 1.0, "green": 1.0, "blue": 1.0}
 GRID = {"red": 0.87, "green": 0.87, "blue": 0.87}
