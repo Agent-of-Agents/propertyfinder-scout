@@ -88,15 +88,45 @@ def run_secondary(store: Store, client: Client, search: Search, today: dt.date) 
 
 
 def run_offplan(store: Store, client: Client, search: Search, today: dt.date) -> dict:
+    restore_catalog(store)                       # в контейнере файла каталога нет — он в MongoDB
     try:
         projects = pf_projects.load_projects()
     except FileNotFoundError:
         return {"error": "каталог проектов ещё не собран — offplan_catalog_refresh()", "total": 0}
     rows = offplan.build_rows(search.as_offplan_brief(), projects, today)
-    store.put(RAW, search.key, {"rows": rows, "collected": today.isoformat()})
+    store.put(RAW, search.key, {"rows": [offplan_card_row(r, projects) for r in rows],
+                                "collected": today.isoformat()})
     report = offplan_sheet.sync(client.spreadsheet_id, rows, search.title, today)
     report["total"] = len(rows)
     return report
+
+
+# Лист говорит по-русски, карточка и кнопки — на общих полях: здесь перевод одного в другое.
+OFFPLAN_FIELDS = {
+    "id": "listing_id", "score": "Балл", "project": "Проект", "developer": "Застройщик",
+    "community": "Район", "location": "Локация", "phase_label": "Фаза продаж",
+    "sales_start": "Старт продаж", "handover": "Сдача", "progress": "Стройка",
+    "type": "Тип", "price": "Цена от AED", "size_m2": "Площадь м²", "price_per_m2": "AED/м²",
+    "payment_plan": "План оплаты", "plans_count": "Планировок", "url": "Ссылка",
+    "brochure_url": "Брошюра", "comment": "Комментарий системы",
+}
+
+
+def offplan_card_row(row: dict, projects: list[dict] | None = None) -> dict:
+    """Строка листа off-plan → словарь для карточки проекта в Telegram."""
+    out = {key: row.get(column) for key, column in OFFPLAN_FIELDS.items()}
+    out["bedrooms"] = str(row.get("Тип") or "").replace("BR", "")
+    vs_area = row.get("К району")
+    if vs_area not in (None, ""):
+        out["vs_area"] = f"{vs_area * 100:+.0f} %"
+    project_id = str(out.get("id") or "").partition(":")[0]
+    for project in projects or []:
+        if str(project.get("project_id")) == project_id:
+            images = project.get("images") or []
+            if images:
+                out["photo_url"] = images[0]
+            break
+    return out
 
 
 def run_distress(client: Client, searches: list[Search], today: dt.date) -> list[dict]:
@@ -274,6 +304,6 @@ def workdir(client: Client) -> Path:
     return base
 
 
-__all__ = ["collect_listings", "medians", "market_delta", "first_collection_report",
+__all__ = ["collect_listings", "medians", "market_delta", "first_collection_report", "offplan_card_row",
            "run_search", "run_distress", "daily_run", "materialize_raw", "workdir",
            "MARKET_SECONDARY", "MARKET_OFFPLAN"]

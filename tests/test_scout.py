@@ -356,6 +356,26 @@ def test_enrich_dupes_and_series():
     assert SECONDARY_HEADERS[-7:] == ["DLD м²", "Тел. брокера DLD", "Email DLD", "Разрешение до", "Юнит DLD", "Дубли", "Серия"]
 
 
+def test_offplan_card_row_translates_sheet_columns():
+    """Лист off-plan по-русски, карточка — на общих полях: проверяем перевод и фото проекта."""
+    from scout import runner
+
+    sheet_row = {"listing_id": "pr-77:1", "Балл": 81, "Проект": "Wellington Ocean",
+                 "Застройщик": "ANK", "Район": "Dubai Islands", "Фаза продаж": "бронирование открыто",
+                 "Сдача": "Q4 2026", "Тип": "1BR", "Цена от AED": 1_650_000, "Площадь м²": 78.0,
+                 "AED/м²": 21_143, "К району": -0.22, "План оплаты": "взнос 10%",
+                 "Ссылка": "https://pf/x", "Брошюра": "https://pf/b.pdf", "Комментарий системы": "дешевле медианы"}
+    row = runner.offplan_card_row(sheet_row, [{"project_id": "pr-77", "images": ["https://pf/render.webp"]}])
+    assert row["id"] == "pr-77:1" and row["score"] == 81 and row["price"] == 1_650_000
+    assert row["vs_area"] == "-22 %" and row["photo_url"] == "https://pf/render.webp"
+
+    client = Client(slug="demo", name="Демо · Off-plan")
+    search = Search(client="demo", slug="di", title="Dubai Islands 1BR", market=MARKET_OFFPLAN)
+    card = cards.project_card(client, search, row, position="1 из 37")
+    assert "Wellington Ocean · 1BR от 1 650 000 AED" in card.text and "-22 % к району" in card.text
+    assert [b.label for b in card.buttons[0]][:2] == ["✅ Одобрить", "📄 Брошюра"]
+
+
 def test_offplan_approve_builds_presentation(store, client_and_search, monkeypatch):
     """Off-plan: ✅ без «Моей цены» → презентация по цене «от» застройщика, галочка в листе."""
     client, _ = client_and_search
