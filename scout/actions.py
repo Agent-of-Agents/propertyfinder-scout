@@ -555,6 +555,9 @@ def approve(client: Client, search: Search, listing_id: str, price: int | None,
     result = {"listing": listing_id, "price": price}
     if search.market == MARKET_SECONDARY and price:
         result.update(build_pdf(client, search, listing_id, int(price), store))
+    elif search.market == MARKET_OFFPLAN:
+        # у off-plan своей цены нет — презентация собирается сразу, по цене «от» застройщика
+        result.update(build_offplan_pdf(client, search, listing_id, store))
     return result
 
 
@@ -581,6 +584,84 @@ def build_pdf(client: Client, search: Search, listing_id: str, price: int,
         "usd": round(price / AED_TO_USD),
         "summary": f"{row.get('bedrooms')}BR · {row.get('size_m2')} м² · {row.get('agency') or ''}".strip(" ·"),
     }
+
+
+def build_offplan_pdf(client: Client, search: Search, listing_id: str,
+                      store: Store | None = None) -> dict:
+    """Презентация по проекту застройщика: рендеры, планировки типа, генплан, платёжный план.
+
+    Тот же сборщик, что на ПК (`scripts/make_offplan_presentation`), но данные проекта берём
+    из каталога в MongoDB (в контейнере файлов кэша нет), а цена — всегда «от» застройщика:
+    своей цены у off-plan не бывает, поэтому «Моя цена» здесь не спрашивается.
+    """
+    store = store or get_store()
+    from lib import offplan, pdf_offplan
+    from lib import pf_projects as pf
+    from scripts import make_offplan_presentation as mo
+    from scripts import make_presentation as mp
+
+    project_id, _, type_key = listing_id.partition(":")
+    if not type_key:
+        raise NotFound(f"{listing_id} — не строка off-plan (ждём «проект:тип»)")
+    projects = _offplan_catalog(store)
+    project = next((p for p in projects if str(p.get("project_id")) == project_id), None)
+    if project is None:
+        raise NotFound(f"Проекта {project_id} нет в каталоге — обнови каталог (catalog_refresh)")
+    if not project.get("types"):                       # карточка старой схемы — перечитаем живьём
+        project = pf.parse_detail(pf.fetch_detail(project["url"]), base=project)
+
+    unit = (project.get("types") or {}).get(type_key) or {}
+    price = unit.get("price_from") or project.get("starting_price") or 0
+    work = runner.workdir(client)
+    media_dir = work / "offplan" / mo.slugify(project.get("title", project_id))
+    photos, plans, master = mo.media(project, type_key, media_dir)
+    brief = search.as_offplan_brief()
+    plan, shares = offplan.best_plan(project, brief)
+    pre_cash = round(price * shares["pre"] / 100) if shares.get("pre") is not None and price else None
+    notes, _ = mo.notes_en(project, type_key, brief, projects)
+    pdf_path = work / "presentations" / f"{mo.slugify(project.get('title', project_id))}_{type_key}.pdf"
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    pdf_offplan.build(project, type_key, photos, plans, master, notes, pdf_path,
+                      pre_handover_cash=pre_cash, plan=plan)
+
+    link, folder_link = "", ""
+    try:
+        folder = mo.unit_folder({"name": client.name}, search.title, project, type_key, price)
+        link = mp.upload_to_drive(pdf_path, folder) or ""
+        folder_link = folder.get("webViewLink", "")
+    except Exception as error:  # noqa: BLE001 — PDF уже собран, Диск может подождать
+        log.warning("Презентация off-plan на Диск не легла: %s", error)
+    values: dict[str, object] = {}
+    if link:
+        values["Презентация"] = link
+    if project.get("brochure_url"):
+        values["Брошюра"] = project["brochure_url"]
+    if values:
+        try:
+            SheetRows(client, search).write(listing_id, values)
+        except (NotFound, PermissionError) as error:
+            log.warning("Ссылки off-plan в лист не записаны: %s", error)
+    return {
+        "pdf_path": str(pdf_path),
+        "link": link,
+        "folder_link": folder_link,
+        "price": price,
+        "from_price": True,
+        "brochure": project.get("brochure_url", ""),
+        "usd": round(price / AED_TO_USD) if price else 0,
+        "summary": f"{project.get('title', '')} · {pf.type_label(type_key)} · "
+                   f"{project.get('developer', '')}".strip(" ·"),
+        "media": f"рендеров {len(photos)}, планировок {len(plans)}"
+                 + (", генплан" if master else ""),
+    }
+
+
+def _offplan_catalog(store: Store) -> list[dict]:
+    """Каталог проектов: файл в контейнере или восстановленный из MongoDB."""
+    from lib import pf_projects as pf
+
+    runner.restore_catalog(store)
+    return pf.load_projects()
 
 
 def request_broker(client: Client, search: Search, listing_id: str, store: Store | None = None) -> dict:
@@ -766,9 +847,7 @@ def daily(store: Store | None = None, only: str | None = None) -> dict:
 
 
 def approved_without_pdf(client: Client, search: Search) -> list[dict]:
-    """Галочки ✅ с ценой, у которых ещё нет презентации — их собирает прогон."""
-    if search.market != MARKET_SECONDARY:
-        return []
+    """Галочки ✅ без презентации — их собирает прогон. У off-plan цены Алексея нет."""
     view = SheetRows(client, search)
     found = []
     for row in view.rows:
@@ -776,7 +855,7 @@ def approved_without_pdf(client: Client, search: Search) -> list[dict]:
             continue
         if view.cell(row, "✅ Одобрено").upper() != "TRUE" or view.cell(row, "Презентация"):
             continue
-        price = parse_int(view.cell(row, "Моя цена"))
+        price = parse_int(view.cell(row, "Моя цена")) if search.market == MARKET_SECONDARY else None
         found.append({"id": str(row[0]).strip(), "price": price})
     return found
 

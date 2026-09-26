@@ -356,6 +356,42 @@ def test_enrich_dupes_and_series():
     assert SECONDARY_HEADERS[-7:] == ["DLD м²", "Тел. брокера DLD", "Email DLD", "Разрешение до", "Юнит DLD", "Дубли", "Серия"]
 
 
+def test_offplan_approve_builds_presentation(store, client_and_search, monkeypatch):
+    """Off-plan: ✅ без «Моей цены» → презентация по цене «от» застройщика, галочка в листе."""
+    client, _ = client_and_search
+    search = Search(client=client.slug, slug="dubai-islands-1br", title="Dubai Islands 1BR",
+                           market=MARKET_OFFPLAN, offplan={"bedrooms": [1], "budget": {"max": 2_000_000}})
+    written = {}
+    class FakeSheet:
+        header = ["listing_id", "✅ Одобрено", "Презентация", "Мой комментарий"]
+        rows = [["pr-77:1", "TRUE", "", ""]]
+        def __init__(self, *a, **k): pass
+        def row_number(self, lid): return 2
+        def cell(self, row, name): return row[self.header.index(name)] if name in self.header else ""
+        def write(self, lid, values, allow_owner=False): written.setdefault(lid, {}).update(values)
+    monkeypatch.setattr(actions, "SheetRows", FakeSheet)
+    calls = {}
+    def fake_build(c, s, lid, st=None):
+        calls["listing"] = lid
+        return {"price": 1_750_000, "from_price": True, "link": "https://drive/pdf",
+                "brochure": "https://pf/brochure.pdf", "usd": 476_000, "pdf_path": "",
+                "summary": "Dubai Islands · 1BR · Nakheel", "media": "рендеров 6, планировок 2"}
+    monkeypatch.setattr(actions, "build_offplan_pdf", fake_build)
+
+    result = actions.approve(client, search, "pr-77:1", None, store)
+    assert calls["listing"] == "pr-77:1" and written["pr-77:1"]["✅ Одобрено"] is True
+    assert "Моя цена" not in written["pr-77:1"]           # у off-plan своей цены не бывает
+    assert result["from_price"] and result["price"] == 1_750_000
+
+    # строка с ✅ и пустой «Презентацией» попадает в очередь прогона без цены
+    todo = actions.approved_without_pdf(client, search)
+    assert todo == [{"id": "pr-77:1", "price": None}]
+
+    card = cards.pdf_card(client, search, {**result, "listing": "pr-77:1"})
+    assert "цена застройщика" in card.text and "рендеров 6" in card.text
+    assert card.buttons[0][0].label.endswith("Брошюра застройщика")
+
+
 def test_reminders_lifecycle(store, client_and_search):
     from zoneinfo import ZoneInfo
 

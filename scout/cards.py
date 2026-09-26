@@ -379,15 +379,21 @@ def ask_price_card(client: Client, search: Search, row: dict) -> Outgoing:
 
 
 def pdf_card(client: Client, search: Search, result: dict) -> Outgoing:
-    lines = [tagline(client, search),
-             f"{ICON_OK} Одобрено · Моя цена <b>{money(result.get('price'))}</b> — записал в лист от твоего имени."]
+    head = (f"{ICON_OK} Одобрено · цена застройщика <b>от {money(result.get('price'))}</b> — презентация собрана."
+            if result.get("from_price")
+            else f"{ICON_OK} Одобрено · Моя цена <b>{money(result.get('price'))}</b> — записал в лист от твоего имени.")
+    lines = [tagline(client, search), head]
     if result.get("summary"):
         lines.append(esc(result["summary"]))
     if result.get("price") and result.get("usd"):
         lines.append(f"<b>{money(result['price'])} AED ≈ {money(result['usd'])} USD</b>")
+    if result.get("media"):
+        lines.append(f"<i>{esc(result['media'])}</i>")
     if result.get("link"):
         lines.append(f'<a href="{esc(result["link"])}">Ссылка на Диске — в колонке «Презентация»</a>')
     buttons = []
+    if result.get("brochure"):
+        buttons.append(Button(f"{ICON_PDF} Брошюра застройщика", url=result["brochure"]))
     if result.get("folder_link"):
         buttons.append(Button("📂 Папка", url=result["folder_link"]))
     buttons.append(Button("🔁 Пересобрать", cb(ACT_REBUILD, client.slug, search.slug, result.get("listing", ""))))

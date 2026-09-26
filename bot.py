@@ -818,9 +818,15 @@ async def cb_approve(call: CallbackQuery, p: dict, chat_id: int, thread: int | N
     search = await run_blocking(actions.get_search, p["client"], p["search"])
     row = await run_blocking(actions.raw_row, search, p["listing"])
     if search.market != MARKET_SECONDARY:
-        await run_blocking(actions.approve, client, search, p["listing"], None)
-        await call.message.answer(f"✅ Одобрено · {row.get('project', p['listing'])}. Презентация по проекту — "
-                                  "следующей задачей; брошюра застройщика — в листе.")
+        # off-plan: своей цены нет, презентацию по проекту собираем сразу
+        await call.message.answer(f"✅ Одобряю · {row.get('project', p['listing'])} — собираю презентацию "
+                                  "застройщика, это до минуты…")
+        async with ChatActionSender.upload_document(bot=call.message.bot, chat_id=chat_id,
+                                                    message_thread_id=thread):
+            result = await run_blocking(actions.approve, client, search, p["listing"], None)
+        result["listing"] = p["listing"]
+        await run_blocking(reminders.touch, client)
+        await send(chat_id, cards.pdf_card(client, search, result), thread)
         return
     await run_blocking(actions.set_pending, f"{chat_id}|{thread or 0}",
                        {"kind": "price", "client": client.slug, "search": search.slug, "listing": p["listing"]})
@@ -1129,10 +1135,14 @@ async def _build_pending_pdfs(client, search, home: int, thread: int | None) -> 
     try:
         todo = await run_blocking(actions.approved_without_pdf, client, search)
         for item in todo:
-            if not item["price"]:
-                continue
-            res = await run_blocking(actions.build_pdf, client, search, item["id"], item["price"])
-            res.update({"listing": item["id"], "price": item["price"]})
+            if search.market == MARKET_SECONDARY:
+                if not item["price"]:
+                    continue
+                res = await run_blocking(actions.build_pdf, client, search, item["id"], item["price"])
+                res.update({"listing": item["id"], "price": item["price"]})
+            else:
+                res = await run_blocking(actions.build_offplan_pdf, client, search, item["id"])
+                res["listing"] = item["id"]
             await send(home, cards.pdf_card(client, search, res), thread)
     except Exception as error:  # noqa: BLE001
         log.exception("PDF по галочкам %s", search.key)
