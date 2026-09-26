@@ -376,11 +376,11 @@ def test_offplan_card_row_translates_sheet_columns():
     assert [b.label for b in card.buttons[0]][:2] == ["✅ Одобрить", "📄 Брошюра"]
 
 
-def test_offplan_approve_builds_presentation(store, client_and_search, monkeypatch):
-    """Off-plan: ✅ без «Моей цены» → презентация по цене «от» застройщика, галочка в листе."""
+def test_offplan_approve_sends_developer_brochure(store, client_and_search, monkeypatch):
+    """Off-plan: ✅ → брошюра застройщика с PF, своей презентации по проекту не собираем."""
     client, _ = client_and_search
     search = Search(client=client.slug, slug="dubai-islands-1br", title="Dubai Islands 1BR",
-                           market=MARKET_OFFPLAN, offplan={"bedrooms": [1], "budget": {"max": 2_000_000}})
+                    market=MARKET_OFFPLAN, offplan={"bedrooms": ["1"], "budget": {"max": 2_000_000}})
     written = {}
     class FakeSheet:
         header = ["listing_id", "✅ Одобрено", "Презентация", "Мой комментарий"]
@@ -391,25 +391,29 @@ def test_offplan_approve_builds_presentation(store, client_and_search, monkeypat
         def write(self, lid, values, allow_owner=False): written.setdefault(lid, {}).update(values)
     monkeypatch.setattr(actions, "SheetRows", FakeSheet)
     calls = {}
-    def fake_build(c, s, lid, st=None):
+    def fake_brochure(c, s, lid, st=None):
         calls["listing"] = lid
-        return {"price": 1_750_000, "from_price": True, "link": "https://drive/pdf",
-                "brochure": "https://pf/brochure.pdf", "usd": 476_000, "pdf_path": "",
-                "summary": "Dubai Islands · 1BR · Nakheel", "media": "рендеров 6, планировок 2"}
-    monkeypatch.setattr(actions, "build_offplan_pdf", fake_build)
+        return {"price": 1_650_000, "from_price": True, "brochure": "https://pf/b.pdf",
+                "link": "https://drive/brochure", "pdf_path": "", "size_mb": 5.2, "usd": 449_000,
+                "summary": "Wellington Ocean · 1BR · ANK Developers"}
+    monkeypatch.setattr(actions, "offplan_brochure", fake_brochure)
 
     result = actions.approve(client, search, "pr-77:1", None, store)
     assert calls["listing"] == "pr-77:1" and written["pr-77:1"]["✅ Одобрено"] is True
     assert "Моя цена" not in written["pr-77:1"]           # у off-plan своей цены не бывает
-    assert result["from_price"] and result["price"] == 1_750_000
+    assert result["brochure"] == "https://pf/b.pdf"
 
-    # строка с ✅ и пустой «Презентацией» попадает в очередь прогона без цены
     todo = actions.approved_without_pdf(client, search)
     assert todo == [{"id": "pr-77:1", "price": None}]
 
-    card = cards.pdf_card(client, search, {**result, "listing": "pr-77:1"})
-    assert "цена застройщика" in card.text and "рендеров 6" in card.text
-    assert card.buttons[0][0].label.endswith("Брошюра застройщика")
+    card = cards.brochure_card(client, search, {**result, "listing": "pr-77:1"})
+    assert "Брошюра застройщика" in card.text and "5.2 МБ" in card.text
+    assert card.buttons[0][0].url == "https://pf/b.pdf"
+
+    # брошюры на PF нет — карточка честно говорит про шаг на ПК, файла нет
+    missing = cards.brochure_card(client, search, {"price": 1_650_000, "summary": "X",
+                                                   "missing": "брошюры застройщика на PF нет"})
+    assert "брошюры застройщика на PF нет" in missing.text and not missing.file_path
 
 
 def test_reminders_lifecycle(store, client_and_search):

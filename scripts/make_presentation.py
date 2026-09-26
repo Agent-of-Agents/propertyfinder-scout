@@ -346,8 +346,10 @@ def pull_plans_from_drive(folder: dict, unit_dir: Path) -> list[Path]:
     return pulled
 
 
-def upload_to_drive(pdf: Path, folder: dict) -> str | None:
-    """Положить презентацию в папку объекта. None — если не вышло."""
+def upload_to_drive(pdf: Path, folder: dict, name: str | None = None) -> str | None:
+    """Положить файл в папку объекта под именем name (по умолчанию — имя файла). None — если не вышло."""
+    wanted = name or pdf.name
+    stem = Path(wanted).stem
     from googleapiclient.http import MediaFileUpload
 
     from lib import drive
@@ -358,7 +360,7 @@ def upload_to_drive(pdf: Path, folder: dict) -> str | None:
     try:
         # Пересборка должна обновлять файл, а не плодить копии рядом.
         existing = [f for f in drive.list_files(folder_id=folder["id"])
-                    if f["name"] in (pdf.name, pdf.stem)]
+                    if f["name"] in (wanted, stem)]
 
         # Раньше PDF лежали уровнем выше, прямо в 2BR/. Если нашли там —
         # переносим внутрь папки объекта с сохранением ID: ссылка в таблице живёт.
@@ -366,7 +368,7 @@ def upload_to_drive(pdf: Path, folder: dict) -> str | None:
             parent_id = drive.get_file(folder["id"]).get("parents", [None])[0]
             if parent_id:
                 for stray in drive.list_files(folder_id=parent_id):
-                    if stray["name"] in (pdf.name, pdf.stem):
+                    if stray["name"] in (wanted, stem):
                         drive.move_file(stray["id"], folder["id"])
                         print(f"         перенесён в папку объекта: {stray['name']}")
                         existing.append(stray)
@@ -384,7 +386,7 @@ def upload_to_drive(pdf: Path, folder: dict) -> str | None:
             return updated.get("webViewLink")
 
         created = drive_service().files().create(
-            body={"name": pdf.name, "parents": [folder["id"]],
+            body={"name": wanted, "parents": [folder["id"]],
                   "mimeType": "application/pdf"},
             media_body=media, fields="id, name, webViewLink",
             supportsAllDrives=True,

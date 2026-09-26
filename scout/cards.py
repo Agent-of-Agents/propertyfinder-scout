@@ -400,6 +400,28 @@ def pdf_card(client: Client, search: Search, result: dict) -> Outgoing:
     return Outgoing("\n".join(lines), [buttons], file_path=result.get("pdf_path", ""))
 
 
+def brochure_card(client: Client, search: Search, result: dict) -> Outgoing:
+    """Off-plan одобрен: брошюра застройщика файлом, ссылка на Диске — в «Презентации»."""
+    lines = [tagline(client, search),
+             f"{ICON_OK} Одобрено · <b>{esc(result.get('summary', ''))}</b>",
+             f"от {money(result.get('price'))} AED"
+             + (f" ≈ {money(result.get('usd'))} USD" if result.get("usd") else "")]
+    if result.get("missing"):
+        lines.append(f"{ICON_WARN} {esc(result['missing'])}")
+    else:
+        size = f" · {result['size_mb']} МБ" if result.get("size_mb") else ""
+        lines.append(f"{ICON_PDF} <b>Брошюра застройщика</b>{size} — файлом ниже, копия на Диске "
+                     "в колонке «Презентация».")
+    buttons = []
+    if result.get("brochure"):
+        buttons.append(Button(f"{ICON_PDF} Брошюра на PF", url=result["brochure"]))
+    if result.get("folder_link"):
+        buttons.append(Button("📂 Папка", url=result["folder_link"]))
+    return Outgoing("\n".join(lines), [buttons] if buttons else [],
+                    file_path=result.get("pdf_path", ""),
+                    meta={"client": client.slug, "search": search.slug, "listing": result.get("listing", "")})
+
+
 def client_fate_card(client: Client, searches: list, note: str = "") -> Outgoing:
     """Что делать с клиентом: заморозить, куплено, в архив, удалить. Решает Алексей кнопкой."""
     live = [s for s in searches if s.status in ("active", "paused")]

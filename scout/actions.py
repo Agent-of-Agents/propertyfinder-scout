@@ -556,8 +556,8 @@ def approve(client: Client, search: Search, listing_id: str, price: int | None,
     if search.market == MARKET_SECONDARY and price:
         result.update(build_pdf(client, search, listing_id, int(price), store))
     elif search.market == MARKET_OFFPLAN:
-        # у off-plan своей цены нет — презентация собирается сразу, по цене «от» застройщика
-        result.update(build_offplan_pdf(client, search, listing_id, store))
+        # off-plan: клиенту уходит брошюра застройщика, своей презентации по проекту не делаем
+        result.update(offplan_brochure(client, search, listing_id, store))
     return result
 
 
@@ -586,16 +586,16 @@ def build_pdf(client: Client, search: Search, listing_id: str, price: int,
     }
 
 
-def build_offplan_pdf(client: Client, search: Search, listing_id: str,
-                      store: Store | None = None) -> dict:
-    """Презентация по проекту застройщика: рендеры, планировки типа, генплан, платёжный план.
+def offplan_brochure(client: Client, search: Search, listing_id: str,
+                     store: Store | None = None) -> dict:
+    """Брошюра застройщика с PF → папка клиента на Диске → ссылка в лист, файл в Telegram.
 
-    Тот же сборщик, что на ПК (`scripts/make_offplan_presentation`), но данные проекта берём
-    из каталога в MongoDB (в контейнере файлов кэша нет), а цена — всегда «от» застройщика:
-    своей цены у off-plan не бывает, поэтому «Моя цена» здесь не спрашивается.
+    По off-plan Алексей отправляет клиенту то, что сверстал застройщик, — своей презентации
+    по проекту мы не собираем. Брошюра есть у 63 % проектов каталога; у остальных её на PF
+    нет, и достаётся она отдельным шагом на ПК (`scripts/fetch_brochures.py`, @Brochurefinderbot):
+    в Telegram бот не может писать боту, нужна user-сессия Алексея.
     """
     store = store or get_store()
-    from lib import offplan, pdf_offplan
     from lib import pf_projects as pf
     from scripts import make_offplan_presentation as mo
     from scripts import make_presentation as mp
@@ -607,53 +607,43 @@ def build_offplan_pdf(client: Client, search: Search, listing_id: str,
     project = next((p for p in projects if str(p.get("project_id")) == project_id), None)
     if project is None:
         raise NotFound(f"Проекта {project_id} нет в каталоге — обнови каталог (catalog_refresh)")
-    if not project.get("types"):                       # карточка старой схемы — перечитаем живьём
-        project = pf.parse_detail(pf.fetch_detail(project["url"]), base=project)
 
     unit = (project.get("types") or {}).get(type_key) or {}
     price = unit.get("price_from") or project.get("starting_price") or 0
-    work = runner.workdir(client)
-    media_dir = work / "offplan" / mo.slugify(project.get("title", project_id))
-    photos, plans, master = mo.media(project, type_key, media_dir)
-    brief = search.as_offplan_brief()
-    plan, shares = offplan.best_plan(project, brief)
-    pre_cash = round(price * shares["pre"] / 100) if shares.get("pre") is not None and price else None
-    notes, _ = mo.notes_en(project, type_key, brief, projects)
-    pdf_path = work / "presentations" / f"{mo.slugify(project.get('title', project_id))}_{type_key}.pdf"
-    pdf_path.parent.mkdir(parents=True, exist_ok=True)
-    pdf_offplan.build(project, type_key, photos, plans, master, notes, pdf_path,
-                      pre_handover_cash=pre_cash, plan=plan)
-
-    link, folder_link = "", ""
-    try:
-        folder = mo.unit_folder({"name": client.name}, search.title, project, type_key, price)
-        link = mp.upload_to_drive(pdf_path, folder) or ""
-        folder_link = folder.get("webViewLink", "")
-    except Exception as error:  # noqa: BLE001 — PDF уже собран, Диск может подождать
-        log.warning("Презентация off-plan на Диск не легла: %s", error)
-    values: dict[str, object] = {}
-    if link:
-        values["Презентация"] = link
-    if project.get("brochure_url"):
-        values["Брошюра"] = project["brochure_url"]
-    if values:
-        try:
-            SheetRows(client, search).write(listing_id, values)
-        except (NotFound, PermissionError) as error:
-            log.warning("Ссылки off-plan в лист не записаны: %s", error)
-    return {
-        "pdf_path": str(pdf_path),
-        "link": link,
-        "folder_link": folder_link,
+    source = project.get("brochure_url") or ""
+    result = {
         "price": price,
         "from_price": True,
-        "brochure": project.get("brochure_url", ""),
+        "brochure": source,
         "usd": round(price / AED_TO_USD) if price else 0,
         "summary": f"{project.get('title', '')} · {pf.type_label(type_key)} · "
                    f"{project.get('developer', '')}".strip(" ·"),
-        "media": f"рендеров {len(photos)}, планировок {len(plans)}"
-                 + (", генплан" if master else ""),
     }
+    if not source:
+        result["missing"] = ("брошюры застройщика на Property Finder нет — её достаёт "
+                             "скрипт на ПК через @Brochurefinderbot")
+        return result
+
+    work = runner.workdir(client) / "brochures"
+    work.mkdir(parents=True, exist_ok=True)
+    suffix = ".pdf" if ".pdf" in source.lower() else Path(source.split("?")[0]).suffix or ".pdf"
+    local = work / f"{mo.slugify(project.get('title', project_id))}{suffix}"
+    if not mo.download(source, local):
+        raise NotFound(f"Брошюра не скачалась с PF: {source[:80]}")
+    result["pdf_path"] = str(local)
+    result["size_mb"] = round(local.stat().st_size / 1024 / 1024, 1)
+
+    try:
+        folder = mo.unit_folder({"name": client.name}, search.title, project, type_key, price)
+        drive_name = f"{project.get('title', '')} — брошюра застройщика{suffix}".strip()
+        link = mp.upload_to_drive(local, folder, name=drive_name) or ""
+        result["link"] = link
+        result["folder_link"] = folder.get("webViewLink", "")
+        if link:
+            SheetRows(client, search).write(listing_id, {"Презентация": link})
+    except Exception as error:  # noqa: BLE001 — файл уже на руках, Диск может подождать
+        log.warning("Брошюра на Диск не легла: %s", error)
+    return result
 
 
 def _offplan_catalog(store: Store) -> list[dict]:
